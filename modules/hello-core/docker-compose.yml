@@ -60,6 +60,8 @@ services:
     # CUSTOMIZE: Replace with your application's volume mounts
     volumes:
       - ./html:/usr/share/nginx/html:ro
+      # Security hardening: server_tokens off; to hide nginx version (LOW-005)
+      - ./conf.d/zz-hardening.conf:/etc/nginx/conf.d/zz-hardening.conf:ro
 
     # Health check using wget (available in Alpine images)
     # CUSTOMIZE: Adjust the health check for your application's endpoint
