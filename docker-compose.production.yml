@@ -1,0 +1,29 @@
+# ==============================================================
+# Production Port Override (PeerMesh Core)
+# ==============================================================
+# Purpose: Override the dev-reserved Traefik host ports
+# (18000/18001/18002/18003) with standard production ports
+# (80/443/8448) on VPS / public deployments.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+#
+# This file is an overlay only; it does NOT replace docker-compose.yml.
+# Keep this file narrow: only production-specific overrides belong here.
+#
+# Note: Docker Compose merges list fields (like `ports`) by APPENDING
+# across files. We use the `!override` tag on the ports list so the
+# production ports REPLACE the base dev ports rather than appending
+# to them (which would cause host port collisions). `!override`
+# requires Compose v2.24.4+.
+#
+# See: WO-PMDL-2026-04-04-302 and docs/DNS-TLS-DEPLOYMENT-GUIDE.md
+# ==============================================================
+
+services:
+  traefik:
+    ports: !override
+      - "80:80"
+      - "443:443"
+      - "8448:8448"
+      - "127.0.0.1:${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
