@@ -104,9 +104,21 @@ services:
       # Only active when SOCIAL_LAB_SUBDOMAIN is set (non-empty).
       # For root-domain deployments (peers.social), leave SOCIAL_LAB_SUBDOMAIN empty
       # and the root router above handles all traffic.
-      - "traefik.http.routers.social.rule=Host(`${SOCIAL_LAB_SUBDOMAIN:-_disabled_}.${DOMAIN}`)"
+      #
+      # When SOCIAL_LAB_SUBDOMAIN is empty the Host rule resolves to the sentinel
+      # `disabled.invalid` — the `.invalid` TLD is reserved by RFC 2606 and is
+      # syntactically valid (so Traefik parses the rule cleanly) but guaranteed
+      # unroutable. The certresolver label is intentionally OMITTED from this
+      # router so Traefik never requests an ACME certificate for the placeholder
+      # — this prevents ACME rate-limit exhaustion and log spam seen when the
+      # bogus placeholder `_disabled_.peers.social` was used previously
+      # (underscores are invalid in ACME DNS names).
+      # To enable this router for real traffic, set SOCIAL_LAB_SUBDOMAIN in .env
+      # and use a compose override file to add
+      # `traefik.http.routers.social.tls.certresolver=letsencrypt`.
+      - "traefik.http.routers.social.rule=Host(`${SOCIAL_LAB_SUBDOMAIN:-disabled}.${DOMAIN:-invalid}`)"
       - "traefik.http.routers.social.entrypoints=websecure"
-      - "traefik.http.routers.social.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.social.tls=true"
 
       # ActivityPub router: ap.${DOMAIN} (e.g., ap.peers.social)
       - "traefik.http.routers.social-ap.rule=Host(`ap.${DOMAIN}`)"
