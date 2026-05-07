@@ -19,6 +19,14 @@ For environments without TPM/vTPM support, OpenBao unseal handling must follow a
 
 - `docs/security/OPENBAO-NO-TPM-FALLBACK-STRATEGY.md`
 
+## Security Operations Runbooks
+
+Operator-facing runbooks for common hardening and recovery tasks:
+
+- `docs/security/HOST-HARDENING-RUNBOOK.md`
+- `docs/security/CONSOLE-RECOVERY-RUNBOOK.md`
+- `docs/BACKUP-RESTORE.md#offsite-requirements`
+
 ## Network Isolation
 
 > **Network Documentation Map**: This section provides a simplified overview. For the authoritative technical specification, see [SECURITY-ARCHITECTURE.md](SECURITY-ARCHITECTURE.md) and [ARCHITECTURE.md](ARCHITECTURE.md).

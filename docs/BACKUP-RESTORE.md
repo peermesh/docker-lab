@@ -480,7 +480,28 @@ Add to cron for email alerts:
 0 8 * * * root /opt/pmdl/scripts/check-backups.sh || mail -s "Backup Alert" admin@example.com
 ```
 
-## Off-Site Backup
+## Offsite Requirements
+
+**MANDATORY FOR PRODUCTION:** Every production Core deployment must push backups to an offsite destination that the source host cannot destroy retroactively, even after root compromise. "Offsite" here means delete-deny, append-only behavior, immutable snapshots, or provider-side versioning/object lock from the source host's perspective.
+
+Local-only backups are not sufficient for production. The 2026-04-11 WordPress VPS forensic report explicitly treated local backups under `/srv/backups/` as tainted and untrustworthy after root compromise because an attacker with root could alter or delete backup history before recovery.
+
+Acceptable offsite patterns include:
+
+- **S3-compatible object storage with object lock and MFA delete:** Configure a bucket with versioning plus retention/object-lock so the backup credentials used by the source host cannot purge history. Encryption-at-rest alone is not enough.
+- **Backblaze B2 with file versioning:** Enable bucket versioning and use application keys scoped so the source host can write new backups without broad bucket-destroy privileges.
+- **Hetzner Storage Box or similar SSH target with restricted append-only keying:** Use a dedicated SSH key restricted to the backup path and permissions model so the source host can upload snapshots but cannot remove prior history.
+- **Rsync or snapshot targets with immutable historical snapshots:** Push to a remote host or NAS that marks completed snapshot sets immutable and exposes only append/write access to the source host.
+
+Minimum production verification:
+
+1. Confirm the remote destination enforces delete-deny, append-only semantics, or retained versions outside source-host control.
+2. Perform a restore drill from the offsite location before declaring the deployment production-ready.
+3. Record the restore drill date and the artifact restored.
+
+See also [`security/HOST-HARDENING-RUNBOOK.md`](security/HOST-HARDENING-RUNBOOK.md) for the host hardening cross-check that pairs public exposure control with offsite recovery readiness.
+
+## Example Offsite Sync Implementation
 
 ### rclone Configuration
 
@@ -502,6 +523,8 @@ type = b2
 account = YOUR_KEY_ID
 key = YOUR_APPLICATION_KEY
 ```
+
+This example transfer path is only production-compliant when the destination bucket also has versioning or equivalent history protection enabled. A plain remote sync target without delete protection does not satisfy the offsite requirement by itself.
 
 ### Sync Script
 
@@ -596,6 +619,7 @@ For large databases, consider:
 4. **Pre-deploy backups** - Always backup before updates
 5. **Separate backup storage** - Use different disk/server for backups
 6. **Document custom databases** - List application-specific databases for selective restore
+7. **Require immutable offsite history** - Versioning, object lock, append-only permissions, or immutable snapshots must prevent source-host root from erasing history
 
 ## Further Reading
 

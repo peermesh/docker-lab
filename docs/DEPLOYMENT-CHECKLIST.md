@@ -111,6 +111,26 @@ command -v sops && command -v age && command -v just && command -v jq
   # Expected: All files show 600
   ```
 
+### Production Recovery Gates
+
+- [ ] **Offsite backup configured with delete-deny, append-only, or versioned history**
+  ```bash
+  # Verify the chosen remote preserves history beyond source-host root control
+  # Example evidence: object-lock/versioning status, append-only key restrictions, or immutable snapshot policy
+  ```
+
+- [ ] **Offsite restore drill completed before launch**
+  ```bash
+  # Restore a recent backup from the offsite location into a test target
+  # Expected: Successful restore documented with date, source artifact, and outcome
+  ```
+
+- [ ] **Recovery design reviewed against the canonical backup guide**
+  ```bash
+  # Review:
+  # docs/BACKUP-RESTORE.md#offsite-requirements
+  ```
+
 ---
 
 ## Volumes

@@ -15,6 +15,7 @@ Core infrastructure decisions that shape the fundamental architecture.
 | [0002](./0002-four-network-topology.md) | Four-Network Topology | **accepted** | 2026-01-02 |
 | [0003](./0003-file-based-secrets.md) | File-Based Secrets Management | **accepted** | 2026-01-02 |
 | [0004](./0004-docker-socket-proxy.md) | Docker Socket Proxy | **accepted** | 2026-01-02 |
+| [0005](./0005-retire-traefik-tls-options-file.md) | Retire the Repo-Level Traefik TLS Options File | **accepted** | 2026-04-12 |
 
 ---
 
@@ -91,8 +92,8 @@ Decisions about module architecture, templates, and extension patterns.
 
 ## Statistics
 
-- **Total Decisions**: 16 accepted, 1 pending
-- **Last Updated**: 2026-03-21
+- **Total Decisions**: 17 accepted, 1 pending
+- **Last Updated**: 2026-04-12
 
 ---
 
@@ -100,6 +101,7 @@ Decisions about module architecture, templates, and extension patterns.
 
 ### Why Traefik?
 - [ADR-0001](./0001-traefik-reverse-proxy.md) explains why Traefik was chosen over Caddy and nginx for reverse proxy duties.
+- [ADR-0005](./0005-retire-traefik-tls-options-file.md) documents why PeerMesh Core no longer ships a repo-level `tls.yml` for custom TLS options.
 
 ### How are networks organized?
 - [ADR-0002](./0002-four-network-topology.md) describes the four-network security architecture.
