@@ -17,13 +17,14 @@
 #   grafana, loki, netdata, uptime-kuma, and the dashboard.
 #
 #   This script enumerates every compose file and profile that is
-#   currently considered active on the VPS, validates the merged
-#   configuration, optionally runs a dry-run preview, and then
-#   executes the real `up -d --remove-orphans` so that true
-#   orphans (e.g. pmdl_catchall) are removed without collateral
-#   damage.
+#   currently considered active on the VPS, runs the canonical
+#   deploy-guard preflight, validates the merged configuration,
+#   optionally runs a dry-run preview, and then executes the real
+#   `up -d --remove-orphans` so that true orphans (e.g.
+#   pmdl_catchall) are removed without collateral damage.
 #
 # USAGE
+#   ./deploy-vps.sh prereqs          # print VPS package prerequisites
 #   ./deploy-vps.sh config            # validate merged config
 #   ./deploy-vps.sh dry-run           # preview what would happen
 #   ./deploy-vps.sh reconcile         # remove orphans only (safe, --no-recreate)
@@ -66,6 +67,7 @@ readonly DOCKER_LAB_DIR="${DOCKER_LAB_DIR:-/opt/docker-lab}"
 # later files override earlier ones.
 readonly ACTIVE_COMPOSE_FILES=(
     "docker-compose.yml"
+    "docker-compose.production.yml"
     "profiles/observability-lite/docker-compose.observability-lite.yml"
     "profiles/observability-full/docker-compose.observability-full.yml"
 )
@@ -101,7 +103,22 @@ compose() {
     ( cd "$DOCKER_LAB_DIR" && docker compose "${_args[@]}" "$@" )
 }
 
+run_guard_check() {
+    local guard_args=("--env-file" "${DOCKER_LAB_DIR}/.env")
+    local profile
+    for profile in "${ACTIVE_PROFILES[@]}"; do
+        guard_args+=("--profile" "$profile")
+    done
+
+    [[ -x "${DOCKER_LAB_DIR}/scripts/deploy-guard.sh" ]] || \
+        die "missing deploy guard: ${DOCKER_LAB_DIR}/scripts/deploy-guard.sh"
+
+    log "running deploy-guard preflight..."
+    ( cd "$DOCKER_LAB_DIR" && ./scripts/deploy-guard.sh "${guard_args[@]}" )
+}
+
 cmd_config() {
+    run_guard_check
     log "validating merged compose configuration..."
     compose config --quiet
     log "OK — merged config is valid"
@@ -109,11 +126,29 @@ cmd_config() {
     compose config --services | sed 's/^/  - /'
 }
 
+cmd_prereqs() {
+    cat <<'EOF'
+VPS package prerequisites:
+  - docker / docker compose plugin
+  - apache2-utils (provides `htpasswd` for TRAEFIK_DASHBOARD_AUTH generation)
+  - openssl (password generation / TLS inspection)
+  - curl (HTTP verification)
+
+Debian/Ubuntu example:
+  apt update
+  apt install -y apache2-utils openssl curl
+
+Generate dashboard auth before deploy:
+  htpasswd -nbB admin "$(openssl rand -base64 24)"
+EOF
+}
+
 cmd_ps() {
     compose ps --format 'table {{.Name}}\t{{.Service}}\t{{.Status}}'
 }
 
 cmd_dry_run() {
+    run_guard_check
     log "dry-run: up -d --remove-orphans"
     compose --dry-run up -d --remove-orphans
 }
@@ -128,7 +163,10 @@ _confirm() {
 
 cmd_reconcile() {
     local assume_yes="${1:-}"
-    cmd_config
+    run_guard_check
+    log "validating merged compose configuration..."
+    compose config --quiet
+    log "OK — merged config is valid"
     log "dry-run preview (--no-recreate):"
     compose --dry-run up -d --remove-orphans --no-recreate || true
     _confirm "$assume_yes"
@@ -140,7 +178,10 @@ cmd_reconcile() {
 
 cmd_up() {
     local assume_yes="${1:-}"
-    cmd_config
+    run_guard_check
+    log "validating merged compose configuration..."
+    compose config --quiet
+    log "OK — merged config is valid"
     log "dry-run preview:"
     compose --dry-run up -d --remove-orphans || true
     _confirm "$assume_yes"
@@ -154,6 +195,7 @@ main() {
     local sub="${1:-}"
     shift || true
     case "$sub" in
+        prereqs)   cmd_prereqs ;;
         config)     cmd_config ;;
         ps)         cmd_ps ;;
         dry-run)    cmd_dry_run ;;
@@ -163,7 +205,7 @@ main() {
             sed -n '2,55p' "$0"
             ;;
         *)
-            die "unknown subcommand: $sub (try: config | ps | dry-run | reconcile | up)"
+            die "unknown subcommand: $sub (try: prereqs | config | ps | dry-run | reconcile | up)"
             ;;
     esac
 }

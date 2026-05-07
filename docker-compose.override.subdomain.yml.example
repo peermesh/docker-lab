@@ -1,0 +1,37 @@
+# ==============================================================
+# Example overlay: re-enable ACME for the social subdomain router
+# ==============================================================
+#
+# Use this overlay only when you want the social module's optional
+# subdomain router to serve real traffic with a real certificate.
+#
+# Base behavior after WO-299:
+#   - `modules/social/docker-compose.yml` always defines the router
+#   - when `SOCIAL_LAB_SUBDOMAIN` is empty it resolves to a harmless
+#     sentinel host and intentionally omits `tls.certresolver`
+#   - that suppresses ACME requests and avoids log spam / rate limits
+#
+# To enable the router for a real subdomain:
+#   1. Set `SOCIAL_LAB_SUBDOMAIN` in `.env`
+#   2. Layer this file on top of the base + module compose files
+#   3. Verify `docker compose config` shows the certresolver restored
+#
+# Example:
+#   DOMAIN=dockerlab.example.com \
+#   SOCIAL_LAB_SUBDOMAIN=social \
+#   docker compose \
+#     -f modules/social/docker-compose.yml \
+#     -f docker-compose.override.subdomain.yml.example \
+#     config
+# ==============================================================
+
+services:
+  social-app:
+    labels:
+      # Re-enable Let's Encrypt for the now-real subdomain router.
+      - "traefik.http.routers.social.tls.certresolver=letsencrypt"
+
+      # Optional but recommended: request the exact FQDN explicitly.
+      # Keep this placeholder value non-production so copying the file
+      # verbatim does not accidentally activate a real hostname.
+      - "traefik.http.routers.social.tls.domains[0].main=${SOCIAL_LAB_SUBDOMAIN:-social}.example.invalid"

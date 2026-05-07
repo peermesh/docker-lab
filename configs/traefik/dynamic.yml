@@ -72,7 +72,7 @@ http:
     # Traefik's default backend or stray services.
     # ----------------------------------------------------------
     deny-all:
-      ipWhiteList:
+      ipAllowList:
         sourceRange:
           - "127.0.0.1/32"
 
@@ -119,16 +119,14 @@ http:
   # with no body, preventing internal info leakage.
   # ============================================================
   routers:
-    catchall:
+    catchall-http:
       rule: "PathPrefix(`/`)"
       entryPoints:
-        - websecure
         - web
       priority: 1
       middlewares:
         - deny-all
       service: noop@file
-      tls: {}
 
   # ============================================================
   # Services — noop backend for catchall

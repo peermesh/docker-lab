@@ -176,7 +176,9 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=pmdl_proxy-external"
 
-      # File provider for dynamic config (security headers, etc.)
+      # File provider for dynamic config (middlewares, catchall, future file-routed
+      # services). Repo-level custom TLS options are intentionally retired; Docker
+      # label routers rely on Traefik's built-in TLS defaults. See ADR-0005.
       - "--providers.file.directory=/etc/traefik"
       - "--providers.file.watch=true"
 
@@ -251,6 +253,12 @@ services:
       - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik-dashboard.service=api@internal"
       - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth,dashboard-auth-ratelimit"
+      - "traefik.http.routers.catchall-https.rule=Host(`${DOMAIN}`) || HostRegexp(`{subdomain:.+}.${DOMAIN}`)"
+      - "traefik.http.routers.catchall-https.entrypoints=websecure"
+      - "traefik.http.routers.catchall-https.tls=true"
+      - "traefik.http.routers.catchall-https.priority=1"
+      - "traefik.http.routers.catchall-https.service=api@internal"
+      - "traefik.http.routers.catchall-https.middlewares=deny-all@file"
       - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH:-__disabled__:$$2y$$10$$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}"
       - "traefik.http.middlewares.dashboard-auth.basicauth.realm=Traefik Dashboard"
       # Rate limit on dashboard auth to prevent brute-force (HIGH-003)
