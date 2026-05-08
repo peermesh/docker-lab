@@ -183,8 +183,9 @@ User assigns a role with phrases like:
 | `blueprint keeper`, `check vision`, `vision alignment` | `agent-blueprint-keeper.md` | **L2 Hierarchy.** Strategic vision guardian. Cascades vision changes. |
 | `request router`, `route request`, `evaluate request` | `agent-request-router.md` | **L3 Hierarchy.** Blueprint-aware gatekeeper. Creates WOs from validated requests. |
 | `gas manager`, `gas team`, `gas teams`, `launch gas team`, `launch gas teams`, `execute work orders`, `run gas loop` | `agent-gas-manager.md` | **L4 Hierarchy.** Autonomous WO execution engine. Spawns workers, monitors completion. |
-| `blocker cataloger`, `scan blockers`, `catalog blockers` | `agent-blocker-cataloger.md` | Cross-project blocker scan; emits per-project + master indexes. Scanner only. |
-| `blocker engineer`, `unblock me`, `unblock work`; optional workstream form: `unblock workstream {ws} [in {abs-path}]` | `agent-blocker-unblocker.md` | Picks up idle blockers, attempts resolution, surfaces unresolvable to user. Workstream form (BLK-014) filters by `(project, workstream)`. |
+| `blocker supervisor`, `you are the supervisor`, `act as supervisor`, `supervisor` (when context is blockers) | `agent-blocker-supervisor.md` | Cross-project router. Identifies user intent and dispatches to catalog scan, resolution, registry CLI, master-index inspection, or manual lifecycle transitions. Default mode is ADVISOR. |
+| `blocker cataloger`, `scan blockers`, `catalog blockers` | `agent-blocker-supervisor-cataloger.md` | Cross-project blocker scan; emits per-project + master indexes. Scanner only. |
+| `blocker engineer`, `unblock me`, `unblock work`; optional workstream form: `unblock workstream {ws} [in {abs-path}]` | `agent-blocker-supervisor-unblocker.md` | Picks up idle blockers, attempts resolution, surfaces unresolvable to user. Workstream form (BLK-014) filters by `(project, workstream)`. |
 | `trio`, `activate trio` | All three agents | Multi-agent coordination |
 | `commit agent`, `smart commit` | `SMART-COMMIT-MODE.md` | Intelligent commits |
 | `design parity audit`, `run design audit`, `design audit`, `DPA`, `journey audit`, `check design parity`, `are the specs implemented` | `DESIGN-PARITY-AUDIT-MODE.md` | Three-parity audit: Vision-to-Design, Design-to-Code, Journey-to-Experience. Parallel agents, delta tracking, remediation WOs. |
