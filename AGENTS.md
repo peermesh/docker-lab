@@ -127,6 +127,13 @@ ALWAYS check `~/.agents/prompts/PROMPT-PATH-INDEX.md` FIRST before searching for
 - **General Rules:** `~/.agents/docs/coding-rules/GENERAL-RULES.md`
 - **CRITICAL Rule G1:** BEFORE adding any function/class/method, SEARCH for existing implementations with same or similar names. MODIFY existing code instead of creating duplicates.
 
+**🚨 MODEL SELECTION (MANDATORY FOR ORCHESTRATORS/SUPERVISORS):**
+- **Policy:** `~/.agents/docs/MODEL-SELECTION-POLICY.md` — which model + effort level to use per complexity tier
+- **Script:** `~/.agents/tools/usage-management/scripts/select-model.sh <tier>` — returns cheapest passing model
+- **Tier classifier:** `~/.agents/tools/usage-management/benchmarks/scripts/classify-tier.sh <WO.md>` — returns 1/2/3
+- **Never hardcode model choices** — always use select-model.sh or the policy defaults
+- **Inference Access:** `~/.agents/docs/INFERENCE-ACCESS-GUIDE.md` — how to call any model from any agent
+
 ---
 
 ## 🎭 AGENT ROLE ASSIGNMENT (CRITICAL)
@@ -159,6 +166,7 @@ User assigns a role with phrases like:
 | dev | Implement from work orders | Creating new work orders (unless blocking) |
 | qa | Verify implementations, run tests | Implementing features |
 | commit | Execute Smart Commit Mode | Creating work orders, implementing features |
+| project steward | Capture monologues, maintain project-local wisdom, map dependencies, create/refine WOs | Cross-project blocker supervision, generic implementation without a scoped WO |
 
 **Details:** Read the role prompt (`~/.agents/prompts/agents/agent-[role].md`). Full role list: `~/.agents/prompts/agents/_AGENT-INDEX.md`.
 
@@ -179,6 +187,7 @@ User assigns a role with phrases like:
 | `qa`, `qa agent` | `agent-qa-full-review.md` | Quality assurance |
 | `orchestrator`, `orchestrate`, `coordinate`, `orchestration`, `launch orchestrator` | `agent-orchestrator.md` | **Conductor, not musician.** Delegates to workers, NEVER executes. One approval → runs to completion. |
 | `manager orchestrator`, `coordinate projects`, `portfolio` | `agent-manager-orchestrator.md` | **VP, not engineer.** Coordinates orchestrators, not workers. Multi-project scope. |
+| `project steward`, `you are the project steward`, `steward this project`, `steward of this project`, `project advisor`, `project supervisor`, `project brief`, `steward brief`, `capture this monologue`, `turn this into work orders` | `agent-project-steward.md` | Single-project advisor/operator. Captures raw thinking, maintains project-local wisdom, maps dependencies, briefs top-down, and turns durable needs into WOs. |
 | `assistant`, `be my assistant` | `agent-assistant.md` | **L1 Hierarchy.** User-facing daemon. Delegates everything, never implements. |
 | `blueprint keeper`, `check vision`, `vision alignment` | `agent-blueprint-keeper.md` | **L2 Hierarchy.** Strategic vision guardian. Cascades vision changes. |
 | `request router`, `route request`, `evaluate request` | `agent-request-router.md` | **L3 Hierarchy.** Blueprint-aware gatekeeper. Creates WOs from validated requests. |
@@ -189,6 +198,7 @@ User assigns a role with phrases like:
 | `trio`, `activate trio` | All three agents | Multi-agent coordination |
 | `commit agent`, `smart commit` | `SMART-COMMIT-MODE.md` | Intelligent commits |
 | `design parity audit`, `run design audit`, `design audit`, `DPA`, `journey audit`, `check design parity`, `are the specs implemented` | `DESIGN-PARITY-AUDIT-MODE.md` | Three-parity audit: Vision-to-Design, Design-to-Code, Journey-to-Experience. Parallel agents, delta tracking, remediation WOs. |
+| `copy first`, `copy-first web`, `markdown first`, `write the website`, `content before code` | `~/.agents/skills/copy-first-web/methodology.md` | Copy-first web development: perfect copy in markdown before building pages. Architecture analysis, deduplication, audience routing, parallel copywriter dispatch, then implementation. |
 
 **See also (Blocker Engineer):** `~/.agents/docs/overviews/BLOCKER-ENGINEER-OVERVIEW.md` — cataloger + unblocker subsystem; user-attention queue at `~/.agents/.dev/ai/blockers/MASTER-INDEX.md`.
 
@@ -420,16 +430,13 @@ For any multi-component system (Providers, LLMs, APIs), define explicit verifica
 
 **Forbidden:**
 - **NEVER poll TaskOutput** (agents are notified automatically)
-- **NEVER use Haiku** for subtasks (unreliable, banned)
 - **NEVER react to individual completions** in parallel batches
 
-**Model Selection (read before every delegation):**
-- **Opus**: Planning, orchestration, reviews, decisions, ambiguous work, documentation.
-- **Sonnet**: Leaf-node execution when ALL five met: tight spec, mechanical verification, low stakes, short horizon, no steering. ~40% cheaper — use it for well-defined work.
-- **Haiku**: FORBIDDEN.
-- Sonnet-safe examples: implement function with spec+tests, single-file refactor, data transforms, well-defined code migrations.
-- Escalate Sonnet→Opus on iteration #2 or if uncertainty appears.
-- Canonical rubric (MUST READ for first-time delegators): `~/.agents-gas-prompt-library/workflows/opus_vs_sonnet_decision_guide_token_efficient.md`
+**Model Selection (MANDATORY — read before every delegation):**
+- **Single source of truth:** `~/.agents/docs/MODEL-SELECTION-POLICY.md`
+- **Script:** `~/.agents/tools/usage-management/scripts/select-model.sh <tier>` — returns cheapest passing model + effort level
+- **Tier classifier:** `~/.agents/tools/usage-management/benchmarks/scripts/classify-tier.sh <WO.md>` — returns 1 (Simple), 2 (Standard), 3 (Complex)
+- Do not hardcode model choices — the policy updates as benchmarks complete and models improve.
 
 **Required:**
 - Always `run_in_background=true`
@@ -765,6 +772,15 @@ SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
 **External File:** `~/.agents/prompts/agents/agent-manager-orchestrator.md`
 
 **Purpose:** Coordinates OTHER orchestrators (multi-project). "VP, not engineer."
+
+---
+## PROJECT STEWARD MODE
+
+**Trigger phrases:** "project steward", "you are the project steward", "steward this project", "steward of this project", "project advisor", "project supervisor", "project brief", "steward brief", "capture this monologue", "turn this into work orders"
+**External File:** `~/.agents/prompts/agents/agent-project-steward.md`
+**Bootstrap:** `~/.agents/docs/PROJECT-STEWARD-BOOTSTRAP-CHECKLIST.md`
+
+**Purpose:** Single-project advisor/operator. Captures raw monologues before synthesis, maintains project-local wisdom under `.dev/ai/roles/project-steward/`, keeps owner-private context out of project-readable files, produces top-level-down strategic briefs with blockers/unblock paths, maps dependencies, creates/refines work orders, and separates universal GAS process from project-specific knowledge.
 
 ---
 ## YOUTUBE TRANSCRIPT MODE

@@ -26,6 +26,11 @@ cd modules/my-module
 
 **Note on relative paths**: The `$schema` in `module.json` and the `extends.file` in `docker-compose.yml` use paths like `../../foundation/...`. These resolve correctly when the module is at `modules/<name>/` but NOT from the template's own location at `foundation/templates/module-template/`. This is intentional -- the paths are designed for the copy destination.
 
+**Standalone source repos**: This template is for Core-managed modules installed
+at `modules/<name>/module.json`. If you keep a module manifest in a standalone
+source repo at `module/module.json`, use the published Core schema `$id` instead:
+`https://peermesh.io/foundation/v1/module.schema.json`.
+
 ## Configuration
 
 | Variable | Description | Default | Required |

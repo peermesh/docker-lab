@@ -3,6 +3,7 @@
 # Host Hardening Validator
 # ==============================================================
 # Checks minimum host-level hardening signals for deployment:
+# - effective sshd state disables password auth and forwarding primitives
 # - ufw active (when installed)
 # - iptables INPUT policy not ACCEPT
 # - DOCKER-USER chain has at least one rule beyond default return
@@ -43,6 +44,44 @@ log_fail() {
     echo "[FAIL] $1"
 }
 
+find_sshd() {
+    if command -v sshd >/dev/null 2>&1; then
+        command -v sshd
+        return 0
+    fi
+
+    for candidate in /usr/sbin/sshd /usr/local/sbin/sshd; do
+        if [[ -x "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+get_sshd_setting() {
+    local key="$1"
+    awk -v key="$key" 'tolower($1) == key { print tolower($2); exit }'
+}
+
+check_sshd_setting() {
+    local effective_config="$1"
+    local key="$2"
+    local expected="$3"
+    local display_name="$4"
+    local actual
+
+    actual="$(printf '%s\n' "$effective_config" | get_sshd_setting "$key")"
+    if [[ -z "$actual" ]]; then
+        log_fail "SSH effective setting ${display_name} is missing (expected ${expected})"
+    elif [[ "$actual" == "$expected" ]]; then
+        log_pass "SSH effective setting ${display_name} is ${expected}"
+    else
+        log_fail "SSH effective setting ${display_name} is ${actual} (expected ${expected})"
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --strict)
@@ -62,6 +101,20 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "== Host Hardening Validation =="
+
+sshd_bin="$(find_sshd || true)"
+if [[ -z "$sshd_bin" ]]; then
+    log_warn "sshd not available; skipping effective SSH hardening check"
+elif ! effective_sshd_config="$("$sshd_bin" -T 2>/dev/null)"; then
+    log_fail "Could not read effective SSH configuration with ${sshd_bin} -T"
+else
+    check_sshd_setting "$effective_sshd_config" "permitrootlogin" "prohibit-password" "PermitRootLogin"
+    check_sshd_setting "$effective_sshd_config" "passwordauthentication" "no" "PasswordAuthentication"
+    check_sshd_setting "$effective_sshd_config" "kbdinteractiveauthentication" "no" "KbdInteractiveAuthentication"
+    check_sshd_setting "$effective_sshd_config" "allowtcpforwarding" "no" "AllowTcpForwarding"
+    check_sshd_setting "$effective_sshd_config" "allowagentforwarding" "no" "AllowAgentForwarding"
+    check_sshd_setting "$effective_sshd_config" "x11forwarding" "no" "X11Forwarding"
+fi
 
 if command -v ufw >/dev/null 2>&1; then
     ufw_status="$(ufw status 2>/dev/null || true)"

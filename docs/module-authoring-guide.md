@@ -16,6 +16,19 @@ Every module must include:
 - `.env.example` (documented module config)
 - `secrets-required.txt` (file-based secret contract)
 
+## Manifest schema reference
+
+For modules authored directly under Core at `modules/<module-id>/module.json`,
+use the template's relative `$schema` value:
+`../../foundation/schemas/module.schema.json`.
+
+For standalone module source repositories whose manifest lives at
+`module/module.json`, use the published Core schema `$id`:
+`https://peermesh.io/foundation/v1/module.schema.json`. Do not use the
+Core-relative `../../foundation/schemas/module.schema.json` path from
+`module/module.json`; it does not resolve to the Core schema authority in a
+standalone repo.
+
 ## Lifecycle requirements
 
 Module lifecycle hooks must be safe, idempotent, and script-portable:

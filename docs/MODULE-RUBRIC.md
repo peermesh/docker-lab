@@ -49,6 +49,12 @@ Every module MUST have the following files:
 
 ## Manifest Requirements (module.json)
 
+The `$schema` value depends on where the manifest lives. Core-managed modules at
+`modules/<module-id>/module.json` use
+`../../foundation/schemas/module.schema.json`. Standalone module source repos
+with `module/module.json` use the published Core schema `$id`,
+`https://peermesh.io/foundation/v1/module.schema.json`.
+
 ### Required Top-Level Fields
 
 ```json

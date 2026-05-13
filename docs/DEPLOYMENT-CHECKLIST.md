@@ -59,10 +59,39 @@ command -v sops && command -v age && command -v just && command -v jq
   # Expected: Connection succeeded
   ```
 
+- [ ] **Cloudflare proxied origins are locked down**
+  If the deployment uses Cloudflare orange-cloud proxying, complete the root guide's [Origin Lockdown for Cloudflare Orange-Cloud Deployments](../../../docs/DNS-TLS-DEPLOYMENT-GUIDE.md#origin-lockdown-for-cloudflare-orange-cloud-deployments) section before relying on Cloudflare WAF, bot controls, or edge rate limits.
+
 - [ ] **No conflicting services on ports 80/443**
   ```bash
   lsof -i :80 -i :443
   # Expected: Empty or only Docker/Traefik processes
+  ```
+
+### Host Security Readiness
+
+- [ ] **Host hardening runbook applied**
+  Complete the baseline in [Host Hardening Runbook](security/HOST-HARDENING-RUNBOOK.md), including key-only SSH, disabled forwarding primitives, firewall verification, and public Docker binding checks.
+
+- [ ] **FIM configured and planted-file drill completed**
+  ```bash
+  sudo test -s /var/lib/aide/aide.db
+  sudo /usr/local/sbin/aide-daily-check.sh || true
+  # Expected: AIDE is configured, the planted-file drill in security/FIM-AIDE-RUNBOOK.md has alerted, and the drill marker was removed
+  ```
+
+- [ ] **SSH session alerting and never-fire password alert configured**
+  ```bash
+  sudo test -x /usr/local/sbin/ssh-login-notify.sh
+  sudo journalctl -u ssh -u sshd --since "24 hours ago" | grep -E "Accepted password" || true
+  # Expected: session-open alerts are verified; successful password-auth events are zero on key-only hosts
+  ```
+
+- [ ] **DOCKER-USER policy and egress visibility verified**
+  ```bash
+  sudo iptables -S DOCKER-USER
+  sudo test -x /usr/local/sbin/egress-baseline-check.sh || sudo journalctl -k --since "24 hours ago" --grep "PMDL-EGRESS-DROP" || true
+  # Expected: DOCKER-USER prevention is active and either baseline-diff or drop-log monitoring is covered
   ```
 
 ---

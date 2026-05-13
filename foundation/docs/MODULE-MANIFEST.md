@@ -6,6 +6,28 @@ The module manifest (`module.json`) is the central configuration file that descr
 
 JSON Schema: [`../schemas/module.schema.json`](../schemas/module.schema.json)
 
+## Schema Reference Standard
+
+Core owns the module manifest schema. The authoritative schema source is
+`foundation/schemas/module.schema.json`, whose published `$id` is
+`https://peermesh.io/foundation/v1/module.schema.json`.
+
+Use the `$schema` value that matches the manifest's source layout:
+
+- Core-managed modules installed at `modules/<module-id>/module.json` should use
+  `../../foundation/schemas/module.schema.json`. This is the path emitted by the
+  Core module template and it resolves inside a Core installation.
+- Standalone module source repositories whose manifest lives at
+  `module/module.json` must use
+  `https://peermesh.io/foundation/v1/module.schema.json`. Do not use
+  `../../foundation/schemas/module.schema.json` from `module/module.json`; in a
+  standalone repo that path points outside the module repo and is not the Core
+  schema authority.
+
+Validation should still pin to the Core-owned schema file from the Core checkout
+or an approved packaged copy. The manifest `$schema` field is the supported
+editor/reference URI, not permission to create a module-local schema authority.
+
 ## Required Fields
 
 ### `id`
@@ -479,11 +501,15 @@ Define module configuration options.
 Validate your manifest against the JSON Schema:
 
 ```bash
-# Using ajv-cli
-npx ajv validate -s foundation/schemas/module.schema.json -d my-module/module.json
+# Core-managed module under modules/<module-id>/
+npx ajv validate -s foundation/schemas/module.schema.json -d modules/my-module/module.json
 
-# Using check-jsonschema
-check-jsonschema --schemafile foundation/schemas/module.schema.json my-module/module.json
+# Standalone module source repo with module/module.json
+npx ajv validate -s /path/to/core/foundation/schemas/module.schema.json -d module/module.json
+
+# Same checks with check-jsonschema
+check-jsonschema --schemafile foundation/schemas/module.schema.json modules/my-module/module.json
+check-jsonschema --schemafile /path/to/core/foundation/schemas/module.schema.json module/module.json
 ```
 
 ## Related Documentation

@@ -199,6 +199,12 @@ Optional components include dashboard UI elements (`dashboard/`), configuration 
 
 The `module.json` manifest is the most important file in any module. It is both a machine-readable specification and a human-readable summary of the module's architectural contract with the foundation.
 
+The `$schema` value is layout-specific. Core-managed modules installed at
+`modules/<module-id>/module.json` use
+`../../foundation/schemas/module.schema.json`. Standalone module source
+repositories whose manifest lives at `module/module.json` use the published Core
+schema `$id`, `https://peermesh.io/foundation/v1/module.schema.json`.
+
 **Required fields:**
 
 ```json
