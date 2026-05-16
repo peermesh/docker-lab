@@ -113,6 +113,13 @@
               "session-management"
             ]
           }
+        },
+        "events": {
+          "type": "array",
+          "description": "Event topics this module subscribes to",
+          "items": {
+            "$ref": "#/$defs/eventSubscriptionRequirement"
+          }
         }
       },
       "additionalProperties": false
@@ -133,8 +140,15 @@
           "description": "Event types this module may emit",
           "items": {
             "type": "string",
-            "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+\\.[a-z0-9-]+$",
-            "description": "Event type in format: module-id.entity.action"
+            "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+){2,}$",
+            "description": "Event type in format: module-id.entity.action or a longer module-scoped topic"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "description": "Discoverable runtime capabilities this module exposes to other modules",
+          "items": {
+            "$ref": "#/$defs/moduleCapability"
           }
         },
         "securityServices": {
@@ -237,7 +251,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["database", "cache", "storage", "queue", "custom"],
+          "enum": ["database", "cache", "storage", "queue", "eventbus", "custom"],
           "description": "Connection type category"
         },
         "providers": {
@@ -281,13 +295,89 @@
       },
       "additionalProperties": false
     },
+    "eventSubscriptionRequirement": {
+      "type": "object",
+      "required": ["topic"],
+      "properties": {
+        "topic": {
+          "type": "string",
+          "pattern": "^[a-z0-9-*#]+(\\.[a-z0-9-*#]+){1,}$",
+          "description": "Event topic or wildcard pattern to subscribe to"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$|^foundation$",
+          "description": "Expected source module for the subscribed topic"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether module startup should fail if the subscription cannot be registered"
+        },
+        "consumerGroup": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$",
+          "description": "Consumer group used by durable event bus backends"
+        },
+        "deliveryGuarantee": {
+          "type": "string",
+          "enum": ["fire-and-forget", "best-effort", "at-least-once"],
+          "description": "Delivery semantics required by this subscriber"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "description": "Event field the consumer uses to deduplicate deliveries"
+        },
+        "deadLetterTopic": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+){2,}$",
+          "description": "Dead-letter topic for this subscription"
+        }
+      },
+      "additionalProperties": false
+    },
+    "moduleCapability": {
+      "type": "object",
+      "required": ["id", "category"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*[a-z0-9]$|^[a-z0-9]$",
+          "description": "Stable capability identifier, for example billing.checkout"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["billing", "identity", "storage", "social", "media", "dashboard", "custom"],
+          "description": "Capability category used by dependency resolution"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$",
+          "description": "Capability contract version"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Human-readable capability description"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+){2,}$"
+          },
+          "description": "Events associated with this capability"
+        }
+      },
+      "additionalProperties": false
+    },
     "connectionProvider": {
       "type": "object",
       "required": ["type", "provider"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["database", "cache", "storage", "queue", "custom"],
+          "enum": ["database", "cache", "storage", "queue", "eventbus", "custom"],
           "description": "Connection type this module provides"
         },
         "provider": {

@@ -476,6 +476,84 @@ All hooks receive these standard environment variables:
 3. `start` - Activate new version
 4. `health` - Verify operational
 
+## Payment-Capable Module Lifecycle Contract
+
+Payment-capable modules are modules that expose billing capabilities, accept
+provider webhooks, or publish financial events. They follow the normal module
+lifecycle plus these additional requirements.
+
+### Manifest Declarations
+
+Payment-capable modules declare:
+
+- provider credentials in `config.properties` with `secret: true`
+- billing capabilities in `provides.capabilities[]`
+- emitted financial topics in `provides.events[]`
+- subscribed financial topics in `requires.events[]` when the module consumes
+  events from another billing-capable module
+
+Webhook endpoint paths are module-owned API semantics, but Core-owned
+registration is manifest-driven: the endpoint base URL, public route labels,
+and required bearer/signing secrets must be discoverable from `module.json`,
+`docker-compose.yml`, and `secrets-required.txt`.
+
+### `validate`
+
+For payment-capable modules, `validate` should fail before install when:
+
+- required provider secret declarations are missing
+- a webhook signing secret is required but not configured
+- a declared billing event does not match the Core event topic pattern
+- a required `requires.events[]` subscription has no compatible event bus
+  connection available
+
+### `install`
+
+`install` initializes durable billing state. It must be idempotent and must not
+overwrite operator-provided secrets. Typical work includes database migrations,
+audit-log storage setup, and creating durable idempotency storage for incoming
+provider webhooks and outgoing financial events.
+
+### `start`
+
+`start` registers runtime hooks:
+
+- expose provider webhook routes through the module's normal HTTP service
+- load provider credentials through the Core secret/config contract
+- subscribe to required event bus topics from `requires.events[]`
+- publish readiness only after subscription registration and webhook route
+  health checks pass
+
+Compliance-critical financial subscriptions must use durable consumer groups,
+manual acknowledgment, and idempotency-key persistence before acking.
+
+### `stop`
+
+`stop` must flush in-flight financial event handling before service shutdown.
+It should stop accepting new webhook requests, complete or persist in-flight
+event processing, release event bus subscriptions, and leave unacknowledged
+events available for redelivery by the durable backend.
+
+### `health`
+
+`health` reports degraded state when webhook routing, provider credential
+loading, event bus connectivity, or DLQ visibility is impaired. A module that
+can serve non-payment features but cannot process financial events should
+return `degraded`, not `healthy`.
+
+### Dependency Resolution
+
+Core resolves module dependencies before lifecycle execution:
+
+1. `requires.modules[]` determines module installation/start order.
+2. `requires.connections[]` resolves the event bus backend, typically
+   `eventbus:redis` for durable Payments fanout.
+3. `requires.events[]` declares subscriber intent. Optional event
+   subscriptions may degrade gracefully; required subscriptions fail closed.
+4. `provides.capabilities[]` advertises billing surfaces so later dependency
+   resolution can select payment-capable modules by capability instead of by
+   hard-coded module id.
+
 ## Error Handling
 
 ### Retries

@@ -1,0 +1,78 @@
+{
+  "$schema": "../../foundation/schemas/module.schema.json",
+  "id": "eventbus-redis",
+  "version": "1.0.0",
+  "name": "Redis Event Bus Provider",
+  "description": "Registers the Core Redis profile as the durable event bus provider for Redis Streams based module fanout.",
+  "foundation": {
+    "minVersion": "1.0.0"
+  },
+  "requires": {
+    "connections": [
+      {
+        "type": "cache",
+        "providers": ["redis"],
+        "required": true,
+        "alias": "eventbus-redis-cache"
+      }
+    ]
+  },
+  "provides": {
+    "connections": [
+      {
+        "type": "eventbus",
+        "provider": "redis"
+      }
+    ],
+    "capabilities": [
+      {
+        "id": "eventbus.redis-streams",
+        "category": "custom",
+        "version": "1.0.0",
+        "description": "Durable Redis Streams event bus with consumer groups, manual acknowledgments, and DLQ routing."
+      }
+    ]
+  },
+  "lifecycle": {
+    "validate": "./hooks/validate.sh",
+    "install": "./hooks/install.sh",
+    "start": "./hooks/start.sh",
+    "stop": "./hooks/stop.sh",
+    "health": {
+      "script": "./hooks/health.sh",
+      "timeout": 10
+    },
+    "uninstall": "./hooks/uninstall.sh"
+  },
+  "config": {
+    "version": "1.0",
+    "properties": {
+      "redisHost": {
+        "type": "string",
+        "default": "redis",
+        "env": "EVENTBUS_REDIS_HOST"
+      },
+      "redisPort": {
+        "type": "number",
+        "default": 6379,
+        "env": "EVENTBUS_REDIS_PORT"
+      },
+      "redisPassword": {
+        "type": "string",
+        "secret": true,
+        "env": "REDIS_PASSWORD"
+      },
+      "streamPrefix": {
+        "type": "string",
+        "default": "eventbus",
+        "env": "EVENTBUS_STREAM_PREFIX"
+      },
+      "maxDeliveryAttempts": {
+        "type": "number",
+        "default": 5,
+        "env": "EVENTBUS_MAX_DELIVERY_ATTEMPTS"
+      }
+    }
+  },
+  "tags": ["eventbus", "redis", "streams"]
+}

@@ -139,6 +139,9 @@ Use this checklist before coding:
 
 - `sub-repos/core/docs/DEPLOYMENT-REPO-PATTERN.md`
 - `sub-repos/core/docs/module-authoring-guide.md`
+- `sub-repos/core/foundation/docs/LIFECYCLE-HOOKS.md`
+- `sub-repos/core/foundation/docs/EVENT-BUS-INTERFACE.md`
+- `sub-repos/core/foundation/events/payments-events.json`
 - `sub-repos/core/docs/DATA-LAYER-OPERATIONS.md`
 - `sub-repos/core/docs/SCHEMA-MAPPING-REFERENCE.md`
 - `sub-repos/core/docs/MODULE-DATA-COMPOSITION-CONSUMER-GUIDE.md`
@@ -157,10 +160,22 @@ For production or promotion pipelines that must not rely on a noop-only event bu
 
 CLI equivalents: `python3 scripts/validation/validate_event_bus_noop_visibility.py --strict` and `--strict-all`.
 
+## Payments event bus contract
+
+Core registers the canonical Payments event bus surface in
+`foundation/events/payments-events.json`. The registry is the Core-side
+contract for multi-consumer Payments fanout: 26 canonical
+`pm-module-payments.*` events, Redis Streams as the preferred durable backend,
+manual acknowledgments for compliance-critical events, and DLQ routing after
+retry exhaustion.
+
+Validation command:
+
+- `./scripts/validation/run-payments-event-bus-contract-gate.sh`
+
 ## Notes for module teams
 
 - Do not depend on `process.cwd()` for production config discovery.
 - Do not require undocumented host paths.
 - Prefer env-injected absolute paths from this contract.
 - Keep local-dev fallback behavior explicit and non-production scoped.
-

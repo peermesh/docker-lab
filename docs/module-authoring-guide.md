@@ -47,6 +47,24 @@ Module runtime must:
 - avoid reliance on undocumented host paths
 - avoid production dependency on `process.cwd()` fallback discovery
 
+## Payment-capable modules
+
+Modules that expose billing capabilities, accept provider webhooks, or publish
+financial events must also follow the payment-capable lifecycle contract in
+`foundation/docs/LIFECYCLE-HOOKS.md`.
+
+At minimum:
+
+- declare provider credentials in `config.properties` with `secret: true`
+- list emitted billing events in `provides.events[]`
+- advertise billing surfaces in `provides.capabilities[]`
+- declare consumed billing topics in `requires.events[]`
+- use durable consumer groups and idempotency keys for `at-least-once`
+  financial event subscriptions
+
+The Core Payments event bus registration lives at
+`foundation/events/payments-events.json`.
+
 ## Validation workflow
 
 Before merge:

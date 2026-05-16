@@ -1,0 +1,167 @@
+{
+  "$schema": "../schemas/payments-event-registry.schema.json",
+  "source": "pm-module-payments",
+  "version": "1.0.0",
+  "description": "Core-owned Payments event bus registration for durable multi-consumer delivery.",
+  "backend": {
+    "preferredConnection": {
+      "type": "eventbus",
+      "provider": "redis"
+    },
+    "mode": "streams",
+    "persistence": "aof-required",
+    "consumerGroupPattern": "{consumer-module}-payments",
+    "deadLetterTopicPrefix": "pm-module-payments.dlq"
+  },
+  "defaults": {
+    "idempotencyKey": "eventId",
+    "maxDeliveryAttempts": 5,
+    "ackMode": "manual"
+  },
+  "events": [
+    {
+      "type": "pm-module-payments.entity-profile.created",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.entity-profile.updated",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.routing-rule.updated",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.payee.kyc.submitted",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.payee.kyc.approved",
+      "deliveryTier": "compliance-critical",
+      "deliveryGuarantee": "at-least-once",
+      "requiresAck": true,
+      "deadLetterTopic": "pm-module-payments.dlq.payee.kyc.approved"
+    },
+    {
+      "type": "pm-module-payments.payee.kyc.rejected",
+      "deliveryTier": "compliance-critical",
+      "deliveryGuarantee": "at-least-once",
+      "requiresAck": true,
+      "deadLetterTopic": "pm-module-payments.dlq.payee.kyc.rejected"
+    },
+    {
+      "type": "pm-module-payments.payee.kyc.pending",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.payment.intake.created",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.payment.intake.succeeded",
+      "deliveryTier": "compliance-critical",
+      "deliveryGuarantee": "at-least-once",
+      "requiresAck": true,
+      "deadLetterTopic": "pm-module-payments.dlq.payment.intake.succeeded"
+    },
+    {
+      "type": "pm-module-payments.payment.intake.failed",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.payment.intake.refunded",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.payout.scheduled",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.payout.sent",
+      "deliveryTier": "compliance-critical",
+      "deliveryGuarantee": "at-least-once",
+      "requiresAck": true,
+      "deadLetterTopic": "pm-module-payments.dlq.payout.sent"
+    },
+    {
+      "type": "pm-module-payments.payout.failed",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.refund.issued",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.dispute.opened",
+      "deliveryTier": "compliance-critical",
+      "deliveryGuarantee": "at-least-once",
+      "requiresAck": true,
+      "deadLetterTopic": "pm-module-payments.dlq.dispute.opened"
+    },
+    {
+      "type": "pm-module-payments.dispute.evidence-required",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.dispute.resolved",
+      "deliveryTier": "compliance-critical",
+      "deliveryGuarantee": "at-least-once",
+      "requiresAck": true,
+      "deadLetterTopic": "pm-module-payments.dlq.dispute.resolved"
+    },
+    {
+      "type": "pm-module-payments.recurring.sponsorship.renewed",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.recurring.sponsorship.cancelled",
+      "deliveryTier": "operational-critical",
+      "deliveryGuarantee": "best-effort"
+    },
+    {
+      "type": "pm-module-payments.fee.allocated",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.crypto.received",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.crypto.converted",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.crypto.quarantined",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    },
+    {
+      "type": "pm-module-payments.tamper.detected",
+      "deliveryTier": "compliance-critical",
+      "deliveryGuarantee": "at-least-once",
+      "requiresAck": true,
+      "deadLetterTopic": "pm-module-payments.dlq.tamper.detected"
+    },
+    {
+      "type": "pm-module-payments.audit.entry-written",
+      "deliveryTier": "informational",
+      "deliveryGuarantee": "fire-and-forget"
+    }
+  ]
+}

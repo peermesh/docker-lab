@@ -263,6 +263,48 @@ Dependency resolver behavior:
    - `./launch_pm-core.sh module enable <module-id> --dry-run`
    - `./foundation/lib/dependency-resolve.sh <module-id> --dry-run`
 
+### `requires.events`
+
+Declare event bus topics the module subscribes to.
+
+```json
+{
+  "requires": {
+    "events": [
+      {
+        "topic": "pm-module-payments.payment.intake.succeeded",
+        "source": "pm-module-payments",
+        "required": false,
+        "consumerGroup": "email-payments",
+        "deliveryGuarantee": "at-least-once",
+        "idempotencyKey": "eventId",
+        "deadLetterTopic": "pm-module-payments.dlq.payment.intake.succeeded"
+      },
+      {
+        "topic": "pm-module-payments.#",
+        "source": "pm-module-payments",
+        "required": false,
+        "consumerGroup": "analytics-payments",
+        "deliveryGuarantee": "best-effort"
+      }
+    ]
+  }
+}
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `topic` | string | - | Event topic or wildcard pattern |
+| `source` | string | - | Expected source module |
+| `required` | boolean | `false` | Whether startup fails if subscription cannot register |
+| `consumerGroup` | string | - | Durable subscriber group |
+| `deliveryGuarantee` | enum | - | `fire-and-forget`, `best-effort`, or `at-least-once` |
+| `idempotencyKey` | string | - | Event field used for deduplication |
+| `deadLetterTopic` | string | - | Topic for retry exhaustion |
+
+For financial events that require `at-least-once` delivery, consumers must
+persist the `idempotencyKey` before acknowledging the event.
+
 ## Capabilities: `provides`
 
 ### `provides.connections`
@@ -300,7 +342,44 @@ Declare event types this module may emit.
 }
 ```
 
-**Event naming convention**: `module-id.entity.action`
+**Event naming convention**: event names are module-scoped topics with at
+least three segments. Use `module-id.entity.action` for simple domains and
+additional segments for deeper domains, for example
+`pm-module-payments.payment.intake.succeeded`.
+
+### `provides.capabilities`
+
+Declare discoverable capabilities this module exposes to other modules.
+Payment-capable modules use billing capabilities so dependency resolution can
+find billing providers without hard-coding a specific module id.
+
+```json
+{
+  "provides": {
+    "capabilities": [
+      {
+        "id": "billing.checkout",
+        "category": "billing",
+        "version": "1.0.0",
+        "description": "Creates checkout sessions and publishes payment intake events",
+        "events": [
+          "pm-module-payments.payment.intake.created",
+          "pm-module-payments.payment.intake.succeeded",
+          "pm-module-payments.payment.intake.failed"
+        ]
+      }
+    ]
+  }
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Stable capability id such as `billing.checkout` |
+| `category` | enum | Capability category, including `billing` |
+| `version` | string | Capability contract version |
+| `description` | string | Human-readable contract summary |
+| `events` | array | Events associated with this capability |
 
 ## Dashboard Integration: `dashboard`
 

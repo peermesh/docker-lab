@@ -76,7 +76,8 @@ def _connection_resolve_registers_noop(core: Path) -> dict[str, object]:
     text = path.read_text(encoding="utf-8", errors="replace")
     return {
         "path": str(path.relative_to(core)),
-        "registers_foundation_noop": 'providers+=("noop:foundation")' in text,
+        "registers_foundation_noop": 'providers+=("noop:eventbus:foundation")' in text
+        or 'providers+=("noop:foundation")' in text,
     }
 
 

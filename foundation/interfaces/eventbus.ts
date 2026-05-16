@@ -50,6 +50,18 @@ export interface Event<T = unknown> {
   metadata?: EventMetadata;
 }
 
+export type EventDeliveryTier =
+  | 'compliance-critical'
+  | 'operational-critical'
+  | 'informational';
+
+export type DeliveryGuarantee =
+  | 'fire-and-forget'
+  | 'best-effort'
+  | 'at-least-once';
+
+export type AckMode = 'auto' | 'manual';
+
 /**
  * EventMetadata contains optional additional information about an event.
  */
@@ -63,6 +75,18 @@ export interface EventMetadata {
   /** Original timestamp if event was replayed */
   originalTimestamp?: number;
 
+  /** Operational criticality tier used by durable event bus backends */
+  deliveryTier?: EventDeliveryTier;
+
+  /** Requested delivery semantics for this event */
+  deliveryGuarantee?: DeliveryGuarantee;
+
+  /** Consumer deduplication key */
+  idempotencyKey?: string;
+
+  /** Topic where exhausted retries are routed */
+  deadLetterTopic?: string;
+
   /** Custom metadata properties */
   [key: string]: unknown;
 }
@@ -74,6 +98,11 @@ export interface EventMetadata {
  * more than once in certain implementations.
  */
 export type EventHandler<T = unknown> = (event: Event<T>) => void | Promise<void>;
+
+/**
+ * EventFilter can skip events after topic matching but before handler dispatch.
+ */
+export type EventFilter<T = unknown> = (event: Event<T>) => boolean | Promise<boolean>;
 
 /**
  * Subscription represents an active event subscription.
@@ -112,6 +141,38 @@ export interface SubscribeOptions {
    * Implementation-dependent; may not be supported by all event bus implementations.
    */
   fromBeginning?: boolean;
+
+  /**
+   * Additional predicate applied after topic matching.
+   * Implementations that cannot run code-side filters must document that they ignore it.
+   */
+  filter?: EventFilter;
+
+  /**
+   * Acknowledgment mode. Use manual for durable financial event processing.
+   * Default: auto
+   */
+  ackMode?: AckMode;
+
+  /**
+   * Minimum delivery semantics required by this subscriber.
+   */
+  deliveryGuarantee?: DeliveryGuarantee;
+
+  /**
+   * Maximum processing attempts before moving the event to a dead-letter topic.
+   */
+  maxDeliveryAttempts?: number;
+
+  /**
+   * Dead-letter topic used after retry exhaustion.
+   */
+  deadLetterTopic?: string;
+
+  /**
+   * Field used by consumers to deduplicate at-least-once deliveries.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -134,6 +195,26 @@ export interface PublishOptions {
    * Implementation-dependent.
    */
   waitForAck?: boolean;
+
+  /**
+   * Delivery semantics requested by the publisher.
+   */
+  deliveryGuarantee?: DeliveryGuarantee;
+
+  /**
+   * Operational criticality tier for routing/monitoring.
+   */
+  deliveryTier?: EventDeliveryTier;
+
+  /**
+   * Deduplication key consumers should persist before acknowledging.
+   */
+  idempotencyKey?: string;
+
+  /**
+   * Dead-letter topic used by durable backends after retry exhaustion.
+   */
+  deadLetterTopic?: string;
 }
 
 /**

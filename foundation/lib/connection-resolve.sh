@@ -173,7 +173,7 @@ get_available_providers() {
                     # Check if module provides connections
                     if command -v jq &>/dev/null; then
                         local provided
-                        provided=$(jq -r '.provides.connections[]? // empty' "$manifest" 2>/dev/null)
+                        provided=$(jq -r '.provides.connections[]? | select(.provider != null and .type != null) | "\(.provider):\(.type)"' "$manifest" 2>/dev/null)
                         if [[ -n "$provided" ]]; then
                             local module_name
                             module_name=$(basename "$module_dir")
@@ -189,7 +189,7 @@ get_available_providers() {
 
     # Also check for foundation's built-in no-op providers
     # The noop eventbus is always available
-    providers+=("noop:foundation")
+    providers+=("noop:eventbus:foundation")
 
     printf '%s\n' "${providers[@]}"
 }
@@ -269,8 +269,8 @@ resolve_connections() {
         local matched_module=""
 
         # Try to find a matching provider from module manifests
-        while IFS=: read -r provider module; do
-            if [[ -n "$provider" ]] && provider_satisfies "$provider" "$req_providers"; then
+        while IFS=: read -r provider provider_type module; do
+            if [[ -n "$provider" && "$provider_type" == "$req_type" ]] && provider_satisfies "$provider" "$req_providers"; then
                 found=true
                 matched_provider="$provider"
                 matched_module="$module"

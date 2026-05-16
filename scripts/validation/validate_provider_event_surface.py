@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # mirrors foundation/schemas/module.schema.json provides.events.items.pattern
-EVENT_ID_PATTERN = re.compile(r"^[a-z0-9-]+\.[a-z0-9-]+\.[a-z0-9-]+$")
+EVENT_ID_PATTERN = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+){2,}$")
 
 DEFAULT_MANIFESTS = (
     "modules/social/module.json",
@@ -56,7 +56,7 @@ def validate_manifest(path: Path) -> list[str]:
         if not EVENT_ID_PATTERN.fullmatch(item):
             errors.append(
                 f"{path}: provides.events[{i}] invalid event id {item!r} "
-                "(expected domain.entity.action: lowercase letters, digits, hyphens, two dots)"
+                "(expected a source-scoped topic with at least three segments: lowercase letters, digits, hyphens, dots)"
             )
         if item in seen:
             errors.append(f"{path}: duplicate event id {item!r}")

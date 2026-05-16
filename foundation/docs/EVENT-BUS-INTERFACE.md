@@ -66,7 +66,9 @@ Events follow the [CloudEvents](https://cloudevents.io/) specification:
 
 ## Topic Naming Convention
 
-Topics follow the format: `<source>.<entity>.<action>`
+Topics follow the format: `<source>.<entity>.<action>` and may add extra
+domain segments when the source module has a deeper event vocabulary. The
+first segment is always the module id or `foundation`.
 
 ```
 backup-module.backup.started
@@ -74,6 +76,8 @@ backup-module.backup.completed
 backup-module.backup.failed
 secrets-module.secret.created
 secrets-module.secret.rotated
+pm-module-payments.payment.intake.succeeded
+pm-module-payments.recurring.sponsorship.cancelled
 ```
 
 ### Wildcards
@@ -88,6 +92,19 @@ backup-module.backup.*     → matches all backup events
 backup-module.#            → matches all events from backup-module
 *.*.created                → matches all "created" events
 ```
+
+### Payments and Financial Event Topics
+
+Payments events use the canonical namespace `pm-module-payments.*`. Core
+accepts multi-segment topics such as
+`pm-module-payments.payment.intake.succeeded` so Payments can preserve its
+domain vocabulary without collapsing event names into compatibility aliases.
+
+Core registers the Payments event bus contract in
+[`../events/payments-events.json`](../events/payments-events.json). That
+registry defines the 26 canonical Payments events, their delivery tier, the
+preferred `eventbus:redis` Streams backend, manual acknowledgments for durable
+events, and DLQ topics for compliance-critical delivery failures.
 
 ## Standard Foundation Events
 
@@ -181,6 +198,28 @@ When no event bus module is installed, the foundation uses a no-op implementatio
 - `is_connected()` returns false
 
 This ensures modules can always call event bus functions without errors, even when no messaging infrastructure is installed.
+
+## Delivery Guarantees and Subscriber Groups
+
+Event bus implementations must document which delivery semantics they support:
+
+- `fire-and-forget`: publish without persistence or consumer acknowledgment.
+- `best-effort`: attempt delivery and expose operational visibility, but do
+  not guarantee recovery after process or broker failure.
+- `at-least-once`: persist events until each registered consumer group
+  acknowledges processing. Consumers must deduplicate by event id.
+
+Financial events that are classified as compliance-critical must use
+`at-least-once` delivery with manual acknowledgment, a durable consumer group
+per subscribing module, and a dead-letter topic after retry exhaustion. The
+recommended backend is `eventbus-redis` backed by Redis Streams with AOF
+persistence enabled on the Core Redis profile.
+
+Consumer modules subscribe by declaring `requires.events[]` in `module.json`
+and by registering their event handlers during the `start` lifecycle hook.
+Multiple modules can subscribe to the same Payments topic because each module
+uses a distinct consumer group; adding Email, Groups, or another consumer must
+not require a Payments code change.
 
 ## Implementing an Event Bus Module
 

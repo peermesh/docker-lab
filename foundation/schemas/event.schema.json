@@ -23,8 +23,8 @@
     },
     "type": {
       "type": "string",
-      "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+\\.[a-z0-9-]+$",
-      "description": "Event type in format: source.entity.action"
+      "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+){2,}$",
+      "description": "Event type in format: source.entity.action or a longer source-scoped topic such as source.domain.entity.action"
     },
     "specversion": {
       "type": "string",
@@ -72,6 +72,25 @@
         "originalTimestamp": {
           "type": "integer",
           "description": "Original timestamp if event was replayed"
+        },
+        "deliveryTier": {
+          "type": "string",
+          "enum": ["compliance-critical", "operational-critical", "informational"],
+          "description": "Operational criticality tier used by durable event bus backends"
+        },
+        "deliveryGuarantee": {
+          "type": "string",
+          "enum": ["fire-and-forget", "best-effort", "at-least-once"],
+          "description": "Requested delivery semantics for this event"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "description": "Consumer deduplication key; for financial events this should be the event id or payload eventId"
+        },
+        "deadLetterTopic": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+(\\.[a-z0-9-]+){2,}$",
+          "description": "Topic where exhausted retries are routed"
         }
       },
       "additionalProperties": true

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peermesh.io/foundation/v1/payments-event-registry.schema.json",
+  "title": "PeerMesh Payments Event Registry",
+  "description": "Schema for Core-owned Payments event bus registration.",
+  "type": "object",
+  "required": ["source", "version", "backend", "defaults", "events"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "const": "pm-module-payments"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "backend": {
+      "type": "object",
+      "required": ["preferredConnection", "mode", "persistence", "consumerGroupPattern", "deadLetterTopicPrefix"],
+      "properties": {
+        "preferredConnection": {
+          "type": "object",
+          "required": ["type", "provider"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "eventbus"
+            },
+            "provider": {
+              "type": "string",
+              "const": "redis"
+            }
+          },
+          "additionalProperties": false
+        },
+        "mode": {
+          "type": "string",
+          "const": "streams"
+        },
+        "persistence": {
+          "type": "string",
+          "const": "aof-required"
+        },
+        "consumerGroupPattern": {
+          "type": "string"
+        },
+        "deadLetterTopicPrefix": {
+          "type": "string",
+          "const": "pm-module-payments.dlq"
+        }
+      },
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "required": ["idempotencyKey", "maxDeliveryAttempts", "ackMode"],
+      "properties": {
+        "idempotencyKey": {
+          "type": "string",
+          "const": "eventId"
+        },
+        "maxDeliveryAttempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ackMode": {
+          "type": "string",
+          "const": "manual"
+        }
+      },
+      "additionalProperties": false
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/paymentEvent"
+      }
+    }
+  },
+  "$defs": {
+    "paymentEvent": {
+      "type": "object",
+      "required": ["type", "deliveryTier", "deliveryGuarantee"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^pm-module-payments(\\.[a-z0-9-]+){2,}$"
+        },
+        "deliveryTier": {
+          "type": "string",
+          "enum": ["compliance-critical", "operational-critical", "informational"]
+        },
+        "deliveryGuarantee": {
+          "type": "string",
+          "enum": ["fire-and-forget", "best-effort", "at-least-once"]
+        },
+        "requiresAck": {
+          "type": "boolean"
+        },
+        "deadLetterTopic": {
+          "type": "string",
+          "pattern": "^pm-module-payments\\.dlq(\\.[a-z0-9-]+){2,}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

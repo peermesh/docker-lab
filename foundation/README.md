@@ -8,6 +8,7 @@ The Foundation defines the contracts, schemas, and validation helpers that keep 
 - **Standalone source repos**: If a module is authored outside the Core tree and keeps its manifest at `module/module.json`, set `module/module.json` `$schema` to the published Core schema `$id`, `https://peermesh.io/foundation/v1/module.schema.json`. The `../../foundation/schemas/module.schema.json` path is only for manifests installed at `modules/<module-id>/module.json` inside a Core checkout.
 - **Runtime behavior**: `launch_pm-core.sh module enable` resolves dependencies via `foundation/lib/dependency-resolve.sh` and then runs `docker compose -f modules/<module>/docker-compose.yml up -d` for each module. Hook scripts are not invoked by the launcher, so implement or invoke them manually as needed.
 - **Hook lifecycle**: Follow the lifecycle definitions in the canonical guide and `foundation/docs/LIFECYCLE-HOOKS.md`. The scripts (`install`, `start`, `stop`, `health`, `upgrade`, `validate`, `uninstall`) should stay within `hooks/`, be idempotent, and report structured status.
+- **Financial event lifecycle**: Payment-capable modules declare billing capabilities, webhook credentials, event subscriptions, and durable delivery requirements through the manifest and the Payments event registry.
 - **Validation scope**: `module.json` is validated against `foundation/schemas/module.schema.json`, and dependency resolution enforces declared requirements and versions. Compose files, hook content, and dashboard assets remain the author’s responsibility; exercise them locally (e.g., `docker compose config`, `hooks/health.sh`) before enabling the module.
 
 ## Foundation Reference Links
@@ -15,6 +16,8 @@ The Foundation defines the contracts, schemas, and validation helpers that keep 
 - Manifest schema: [`schemas/module.schema.json`](schemas/module.schema.json)
 - Lifecycle schema: [`schemas/lifecycle.schema.json`](schemas/lifecycle.schema.json)
 - Event bus interface: [`schemas/event.schema.json`](schemas/event.schema.json)
+- Payments event registry: [`events/payments-events.json`](events/payments-events.json)
+- Payments registry schema: [`schemas/payments-event-registry.schema.json`](schemas/payments-event-registry.schema.json)
 - Connection schema: [`schemas/connection.schema.json`](schemas/connection.schema.json)
 - Dashboard schema: [`schemas/dashboard.schema.json`](schemas/dashboard.schema.json)
 - Version compatibility: [`docs/VERSION-COMPATIBILITY.md`](docs/VERSION-COMPATIBILITY.md)
@@ -38,6 +41,7 @@ foundation/
 │   ├── event.schema.json
 │   ├── connection.schema.json
 │   ├── dashboard.schema.json
+│   ├── payments-event-registry.schema.json
 │   ├── config.schema.json
 │   ├── version.schema.json
 │   ├── security.schema.json
@@ -74,6 +78,8 @@ foundation/
 │   ├── CONFIGURATION-SCHEMA.md
 │   ├── MIGRATION-GUIDE.md
 │   └── VERSION-COMPATIBILITY.md
+├── events/
+│   └── payments-events.json
 └── templates/
     └── module-template/
         ├── module.json

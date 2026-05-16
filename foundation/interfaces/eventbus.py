@@ -63,6 +63,26 @@ class StopReason(str, Enum):
     SYSTEM_SHUTDOWN = 'system-shutdown'
 
 
+class EventDeliveryTier(str, Enum):
+    """Operational criticality tiers used by durable event bus backends."""
+    COMPLIANCE_CRITICAL = 'compliance-critical'
+    OPERATIONAL_CRITICAL = 'operational-critical'
+    INFORMATIONAL = 'informational'
+
+
+class DeliveryGuarantee(str, Enum):
+    """Delivery semantics requested by publishers or subscribers."""
+    FIRE_AND_FORGET = 'fire-and-forget'
+    BEST_EFFORT = 'best-effort'
+    AT_LEAST_ONCE = 'at-least-once'
+
+
+class AckMode(str, Enum):
+    """Subscriber acknowledgment mode."""
+    AUTO = 'auto'
+    MANUAL = 'manual'
+
+
 @dataclass
 class HealthCheck:
     """Individual health check result."""
@@ -77,6 +97,10 @@ class EventMetadata:
     version: Optional[str] = None
     retry_count: Optional[int] = None
     original_timestamp: Optional[int] = None
+    delivery_tier: Optional[EventDeliveryTier] = None
+    delivery_guarantee: Optional[DeliveryGuarantee] = None
+    idempotency_key: Optional[str] = None
+    dead_letter_topic: Optional[str] = None
     extra: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -175,10 +199,22 @@ class SubscribeOptions:
         exclude_self: If True, only receive events from other modules (not from self)
         group: Consumer group name for competing consumers pattern
         from_beginning: If True, receive historical events from the beginning
+        filter: Optional predicate applied after topic matching
+        ack_mode: Acknowledgment mode; use manual for durable financial events
+        delivery_guarantee: Minimum delivery semantics required by this subscriber
+        max_delivery_attempts: Retry ceiling before dead-letter routing
+        dead_letter_topic: Topic used when retry attempts are exhausted
+        idempotency_key: Event field the consumer persists to deduplicate deliveries
     """
     exclude_self: bool = False
     group: Optional[str] = None
     from_beginning: bool = False
+    filter: Optional[Callable[[Event], Union[bool, Awaitable[bool]]]] = None
+    ack_mode: AckMode = AckMode.AUTO
+    delivery_guarantee: Optional[DeliveryGuarantee] = None
+    max_delivery_attempts: Optional[int] = None
+    dead_letter_topic: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 @dataclass
@@ -190,10 +226,18 @@ class PublishOptions:
         correlation_id: Correlation ID to link this event with a workflow
         causation_id: Causation ID indicating what event caused this one
         wait_for_ack: If True, wait for the event to be acknowledged/persisted
+        delivery_guarantee: Delivery semantics requested by the publisher
+        delivery_tier: Operational criticality tier for routing and monitoring
+        idempotency_key: Deduplication key consumers should persist
+        dead_letter_topic: Dead-letter topic used after retry exhaustion
     """
     correlation_id: Optional[str] = None
     causation_id: Optional[str] = None
     wait_for_ack: bool = False
+    delivery_guarantee: Optional[DeliveryGuarantee] = None
+    delivery_tier: Optional[EventDeliveryTier] = None
+    idempotency_key: Optional[str] = None
+    dead_letter_topic: Optional[str] = None
 
 
 # Type alias for event handlers
