@@ -1,0 +1,112 @@
+# ==============================================================
+# PeerMesh Core - Staging-Only Authentik ForwardAuth
+# ==============================================================
+#
+# Loaded only by docker-compose.authentik-staging.yml, which bind-mounts
+# this file into /etc/traefik/authentik-forward-auth.yml.
+#
+# Canonical middleware name for Core F1:
+#   peermesh-auth@file
+#
+# Spoofing rule:
+#   Client-supplied X-Peermesh-* identity headers are stripped before
+#   forwardAuth runs. Only headers returned by the Authentik outpost after
+#   successful authentication may be forwarded to upstream services.
+# ==============================================================
+
+http:
+  middlewares:
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        frameDeny: true
+        customFrameOptionsValue: "DENY"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        contentSecurityPolicy: >-
+          default-src 'self';
+          script-src 'self';
+          style-src 'self' 'unsafe-inline';
+          font-src 'self';
+          img-src 'self' data:;
+          frame-ancestors 'none';
+          base-uri 'self';
+          form-action 'self'
+        permissionsPolicy: >-
+          camera=(),
+          microphone=(),
+          geolocation=(),
+          interest-cohort=(),
+          payment=(),
+          usb=()
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Powered-By: ""
+          Server: ""
+          X-Forwarded-Server: ""
+          X-Robots-Tag: "noindex,nofollow"
+          X-Permitted-Cross-Domain-Policies: "none"
+
+    deny-all:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"
+
+    peermesh-strip-spoofed-identity:
+      headers:
+        customRequestHeaders:
+          X-Peermesh-Auth-Subject: ""
+          X-Peermesh-Actor-WebID: ""
+          X-Peermesh-Tenant-ID: ""
+          X-Peermesh-Property-ID: ""
+          X-Peermesh-Roles: ""
+          X-authentik-username: ""
+          X-authentik-groups: ""
+          X-authentik-entitlements: ""
+          X-authentik-email: ""
+          X-authentik-name: ""
+          X-authentik-uid: ""
+          X-authentik-jwt: ""
+          X-authentik-meta-jwks: ""
+          X-authentik-meta-outpost: ""
+          X-authentik-meta-provider: ""
+          X-authentik-meta-app: ""
+          X-authentik-meta-version: ""
+
+    peermesh-auth:
+      forwardAuth:
+        address: "http://authentik-server:9000/outpost.goauthentik.io/auth/traefik"
+        trustForwardHeader: true
+        maxResponseBodySize: 8192
+        authResponseHeaders:
+          - X-authentik-username
+          - X-authentik-groups
+          - X-authentik-entitlements
+          - X-authentik-email
+          - X-authentik-name
+          - X-authentik-uid
+          - X-authentik-meta-jwks
+          - X-authentik-meta-outpost
+          - X-authentik-meta-provider
+          - X-authentik-meta-app
+          - X-authentik-meta-version
+          - X-Peermesh-Auth-Subject
+          - X-Peermesh-Actor-WebID
+          - X-Peermesh-Tenant-ID
+          - X-Peermesh-Property-ID
+          - X-Peermesh-Roles
+
+    peermesh-strip-edge-credentials:
+      headers:
+        customRequestHeaders:
+          Authorization: ""
+          Cookie: ""
+
+    peermesh-staging-auth-chain:
+      chain:
+        middlewares:
+          - peermesh-strip-spoofed-identity
+          - peermesh-auth
+          - peermesh-strip-edge-credentials

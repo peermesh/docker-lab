@@ -1,0 +1,198 @@
+# ==============================================================
+# PeerMesh Core - Authentik Staging-Only Proof Overlay
+# ==============================================================
+#
+# Scope:
+#   - Staging proof only.
+#   - Do not include this overlay in production compose commands.
+#   - Uses placeholder-driven environment variables only; do not commit
+#     real credentials or generated secrets.
+#
+# Usage:
+#   cp authentik-staging.env.example .env.authentik-staging
+#   edit .env.authentik-staging with staging-only generated values
+#   set -a && . ./.env.authentik-staging && set +a
+#   docker compose -f docker-compose.yml \
+#     -f docker-compose.authentik-staging.yml config --quiet
+#
+# Canonical base compose path:
+#   /Users/grig/work/peermesh/repo/peermesh-core/sub-repos/core/docker-compose.yml
+# ==============================================================
+
+x-authentik-common: &authentik-common
+  image: ghcr.io/goauthentik/server@sha256:feb81e02f7af70469c87c8a4fbfdb148647ae7a3ee5f79f8b08b7ee02b98c4c9
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  environment:
+    AUTHENTIK_ERROR_REPORTING__ENABLED: "${AUTHENTIK_STAGING_ERROR_REPORTING_ENABLED:-false}"
+    AUTHENTIK_DISABLE_UPDATE_CHECK: "${AUTHENTIK_STAGING_DISABLE_UPDATE_CHECK:-true}"
+    AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+    AUTHENTIK_POSTGRESQL__NAME: "${AUTHENTIK_STAGING_POSTGRES_DB:-authentik}"
+    AUTHENTIK_POSTGRESQL__USER: "${AUTHENTIK_STAGING_POSTGRES_USER:-authentik}"
+    AUTHENTIK_POSTGRESQL__PASSWORD: "${AUTHENTIK_STAGING_POSTGRES_PASSWORD:?set AUTHENTIK_STAGING_POSTGRES_PASSWORD in .env.authentik-staging copied from authentik-staging.env.example}"
+    AUTHENTIK_SECRET_KEY: "${AUTHENTIK_STAGING_SECRET_KEY:?set AUTHENTIK_STAGING_SECRET_KEY in .env.authentik-staging copied from authentik-staging.env.example}"
+    AUTHENTIK_BOOTSTRAP_EMAIL: "${AUTHENTIK_STAGING_BOOTSTRAP_EMAIL:-staging-admin@example.invalid}"
+    AUTHENTIK_BOOTSTRAP_PASSWORD: "${AUTHENTIK_STAGING_BOOTSTRAP_PASSWORD:-}"
+    AUTHENTIK_BOOTSTRAP_TOKEN: "${AUTHENTIK_STAGING_BOOTSTRAP_TOKEN:-}"
+  depends_on:
+    authentik-postgres:
+      condition: service_healthy
+  networks:
+    - authentik-internal
+
+services:
+  socket-proxy:
+    container_name: pmdl_socket_proxy_authentik_staging
+
+  traefik:
+    container_name: pmdl_traefik_authentik_staging
+    command:
+      # Docker provider via staging-only socket-proxy/network isolation.
+      - "--providers.docker=true"
+      - "--providers.docker.endpoint=tcp://socket-proxy:2375"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.constraints=Label(`com.docker.compose.project`,`peermesh-authentik-staging-proof`)"
+      - "--providers.docker.network=pmdl_proxy-external-authentik-staging"
+
+      # File provider for base and staging-only dynamic middleware config.
+      - "--providers.file.directory=/etc/traefik"
+      - "--providers.file.watch=true"
+
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.middlewares=security-headers@file"
+      - "--entrypoints.matrix-fed.address=:8448"
+      - "--entrypoints.traefik.address=:8080"
+
+      # HTTP to HTTPS redirect
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      # Local proof only; the default ACME CA is intentionally unreachable.
+      - "--certificatesresolvers.letsencrypt.acme.email=${ADMIN_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.caserver=${TRAEFIK_ACME_CASERVER:-https://127.0.0.1/acme-staging-disabled}"
+
+      # Dashboard and health check endpoints stay localhost-bound via ports below.
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--ping=true"
+      - "--ping.entrypoint=traefik"
+
+      # Logging
+      - "--log.level=${TRAEFIK_LOG_LEVEL:-INFO}"
+      - "--accesslog=true"
+      - "--accesslog.format=json"
+    ports:
+      - "127.0.0.1:${AUTHENTIK_STAGING_WEB_PORT:-19080}:80"
+      - "127.0.0.1:${AUTHENTIK_STAGING_WEBSECURE_PORT:-19443}:443"
+      - "127.0.0.1:${AUTHENTIK_STAGING_MATRIX_FED_PORT:-19448}:8448"
+      - "127.0.0.1:${AUTHENTIK_STAGING_TRAEFIK_DASHBOARD_PORT:-19083}:8080"
+    depends_on:
+      authentik-server:
+        condition: service_started
+    volumes:
+      - ./configs/traefik-staging:/etc/traefik:ro
+
+  authentik-postgres:
+    image: docker.io/library/postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    container_name: pmdl_authentik_postgres_staging
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: "${AUTHENTIK_STAGING_POSTGRES_DB:-authentik}"
+      POSTGRES_USER: "${AUTHENTIK_STAGING_POSTGRES_USER:-authentik}"
+      POSTGRES_PASSWORD: "${AUTHENTIK_STAGING_POSTGRES_PASSWORD:?set AUTHENTIK_STAGING_POSTGRES_PASSWORD in .env.authentik-staging copied from authentik-staging.env.example}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d \"$${POSTGRES_DB}\" -U \"$${POSTGRES_USER}\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - pmdl_authentik_postgres_data_staging:/var/lib/postgresql/data
+    networks:
+      - authentik-internal
+
+  authentik-server:
+    <<: *authentik-common
+    container_name: pmdl_authentik_server_staging
+    command: server
+    shm_size: 512mb
+    volumes:
+      - pmdl_authentik_media_staging:/media
+      - pmdl_authentik_templates_staging:/templates
+    networks:
+      - authentik-internal
+      - proxy-external
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik-staging.rule=Host(`${AUTHENTIK_STAGING_HOST:-auth}.${DOMAIN}`)"
+      - "traefik.http.routers.authentik-staging.entrypoints=websecure"
+      - "traefik.http.routers.authentik-staging.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik-staging.service=authentik-staging"
+      - "traefik.http.services.authentik-staging.loadbalancer.server.port=9000"
+      # Authentik forward-auth callback path for the proof host must stay public.
+      - "traefik.http.routers.authentik-proof-outpost.rule=Host(`${AUTHENTIK_STAGING_PROOF_HOST:-auth-proof}.${DOMAIN}`) && PathPrefix(`/outpost.goauthentik.io`)"
+      - "traefik.http.routers.authentik-proof-outpost.entrypoints=websecure"
+      - "traefik.http.routers.authentik-proof-outpost.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik-proof-outpost.priority=100"
+      - "traefik.http.routers.authentik-proof-outpost.service=authentik-staging"
+
+  authentik-worker:
+    <<: *authentik-common
+    container_name: pmdl_authentik_worker_staging
+    command: worker
+    shm_size: 512mb
+    user: root
+    volumes:
+      - pmdl_authentik_media_staging:/media
+      - pmdl_authentik_certs_staging:/certs
+      - pmdl_authentik_templates_staging:/templates
+
+  core-auth-proof:
+    image: docker.io/traefik/whoami@sha256:43a68d10b9dfcfc3ffbfe4dd42100dc9aeaf29b3a5636c856337a5940f1b4f1c
+    container_name: pmdl_core_auth_proof_staging
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      authentik-server:
+        condition: service_started
+    networks:
+      - proxy-external
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.core-auth-proof.rule=Host(`${AUTHENTIK_STAGING_PROOF_HOST:-auth-proof}.${DOMAIN}`)"
+      - "traefik.http.routers.core-auth-proof.entrypoints=websecure"
+      - "traefik.http.routers.core-auth-proof.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.core-auth-proof.priority=10"
+      - "traefik.http.routers.core-auth-proof.middlewares=peermesh-staging-auth-chain@file"
+      - "traefik.http.routers.core-auth-proof.service=core-auth-proof"
+      - "traefik.http.services.core-auth-proof.loadbalancer.server.port=80"
+
+volumes:
+  pmdl_authentik_postgres_data_staging:
+    driver: local
+  pmdl_authentik_media_staging:
+    driver: local
+  pmdl_authentik_templates_staging:
+    driver: local
+  pmdl_authentik_certs_staging:
+    driver: local
+
+networks:
+  authentik-internal:
+    internal: true
+    name: pmdl_authentik_internal_staging
+  socket-proxy:
+    internal: true
+    name: pmdl_socket-proxy-authentik-staging
+  proxy-external:
+    name: pmdl_proxy-external-authentik-staging
