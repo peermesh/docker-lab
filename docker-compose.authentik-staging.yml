@@ -142,6 +142,12 @@ services:
       - "traefik.http.routers.authentik-proof-outpost.tls.certresolver=letsencrypt"
       - "traefik.http.routers.authentik-proof-outpost.priority=100"
       - "traefik.http.routers.authentik-proof-outpost.service=authentik-staging"
+      # Authentik forward-auth callback path for the dedicated admin proof host must stay public.
+      - "traefik.http.routers.authentik-admin-proof-outpost.rule=Host(`${AUTHENTIK_STAGING_ADMIN_PROOF_HOST:-auth-admin-proof}.${DOMAIN}`) && PathPrefix(`/outpost.goauthentik.io`)"
+      - "traefik.http.routers.authentik-admin-proof-outpost.entrypoints=websecure"
+      - "traefik.http.routers.authentik-admin-proof-outpost.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik-admin-proof-outpost.priority=100"
+      - "traefik.http.routers.authentik-admin-proof-outpost.service=authentik-staging"
 
   authentik-worker:
     <<: *authentik-common
@@ -169,12 +175,18 @@ services:
       - proxy-external
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.core-auth-proof.rule=Host(`${AUTHENTIK_STAGING_PROOF_HOST:-auth-proof}.${DOMAIN}`)"
+      - "traefik.http.routers.core-auth-proof.rule=Host(`${AUTHENTIK_STAGING_PROOF_HOST:-auth-proof}.${DOMAIN}`) && !PathPrefix(`/api/admin`)"
       - "traefik.http.routers.core-auth-proof.entrypoints=websecure"
       - "traefik.http.routers.core-auth-proof.tls.certresolver=letsencrypt"
       - "traefik.http.routers.core-auth-proof.priority=10"
-      - "traefik.http.routers.core-auth-proof.middlewares=peermesh-staging-auth-chain@file"
+      - "traefik.http.routers.core-auth-proof.middlewares=peermesh-auth@file"
       - "traefik.http.routers.core-auth-proof.service=core-auth-proof"
+      - "traefik.http.routers.core-auth-proof-admin.rule=Host(`${AUTHENTIK_STAGING_ADMIN_PROOF_HOST:-auth-admin-proof}.${DOMAIN}`) && PathPrefix(`/api/admin`)"
+      - "traefik.http.routers.core-auth-proof-admin.entrypoints=websecure"
+      - "traefik.http.routers.core-auth-proof-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.core-auth-proof-admin.priority=50"
+      - "traefik.http.routers.core-auth-proof-admin.middlewares=peermesh-admin-auth@file"
+      - "traefik.http.routers.core-auth-proof-admin.service=core-auth-proof"
       - "traefik.http.services.core-auth-proof.loadbalancer.server.port=80"
 
 volumes:

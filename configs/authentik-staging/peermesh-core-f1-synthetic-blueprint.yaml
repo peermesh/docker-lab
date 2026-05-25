@@ -1,0 +1,219 @@
+# PeerMesh Core F1 Authentik isolated staging synthetic fixture.
+#
+# Review before execution. This blueprint is for the isolated staging compose
+# project only. It must never be applied to production, shared staging, live
+# Authentik, module routers, DNS, Cloudflare, HSTS, GAS PA, GAS Explorer, or
+# Model Benchmarking.
+#
+# It intentionally uses only placeholder hosts and synthetic users. Runtime
+# passwords must be supplied as staging-only environment variables by the
+# guarded wrapper; they are not stored in this file.
+
+version: 1
+
+metadata:
+  name: peermesh-core-f1-isolated-staging-synthetic
+  labels:
+    example.invalid/peermesh-scope: isolated-staging-only
+    example.invalid/peermesh-production: "false"
+    example.invalid/peermesh-review-required: "true"
+
+context:
+  peermesh_external_host: https://auth-proof.example.invalid
+  peermesh_admin_external_host: https://auth-admin-proof.example.invalid
+  peermesh_actor_webid_admin: https://actors.example.invalid/peermesh-synthetic-admin
+  peermesh_actor_webid_user: https://actors.example.invalid/peermesh-synthetic-user
+  peermesh_tenant_id: tenant-synthetic-0001
+  peermesh_property_id: property-synthetic-0001
+
+entries:
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Authentication flow
+
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Provider authorization flow (implicit consent)
+
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: Default - Invalidation flow
+
+  - model: authentik_blueprints.metaapplyblueprint
+    attrs:
+      identifiers:
+        name: System - Proxy Provider - Scopes
+
+  - model: authentik_core.group
+    id: peermesh-admins
+    identifiers:
+      name: peermesh-admins
+    attrs:
+      is_superuser: false
+      attributes:
+        peermesh_fixture: isolated-staging-synthetic
+        f2_role: admin
+
+  - model: authentik_core.group
+    id: peermesh-users
+    identifiers:
+      name: peermesh-users
+    attrs:
+      is_superuser: false
+      attributes:
+        peermesh_fixture: isolated-staging-synthetic
+        f2_role: user
+
+  - model: authentik_core.user
+    id: peermesh-synthetic-admin
+    identifiers:
+      username: peermesh-synthetic-admin
+    attrs:
+      name: PeerMesh Synthetic Admin
+      email: peermesh-synthetic-admin@example.invalid
+      is_active: true
+      type: internal
+      path: users
+      password: !Env AUTHENTIK_STAGING_SYNTHETIC_ADMIN_PASSWORD
+      groups:
+        - !KeyOf peermesh-admins
+      attributes:
+        peermesh_fixture: isolated-staging-synthetic
+        peermesh_actor_webid: !Context peermesh_actor_webid_admin
+        peermesh_tenant_id: !Context peermesh_tenant_id
+        peermesh_property_id: !Context peermesh_property_id
+
+  - model: authentik_core.user
+    id: peermesh-synthetic-user
+    identifiers:
+      username: peermesh-synthetic-user
+    attrs:
+      name: PeerMesh Synthetic User
+      email: peermesh-synthetic-user@example.invalid
+      is_active: true
+      type: internal
+      path: users
+      password: !Env AUTHENTIK_STAGING_SYNTHETIC_USER_PASSWORD
+      groups:
+        - !KeyOf peermesh-users
+      attributes:
+        peermesh_fixture: isolated-staging-synthetic
+        peermesh_actor_webid: !Context peermesh_actor_webid_user
+        peermesh_tenant_id: !Context peermesh_tenant_id
+        peermesh_property_id: !Context peermesh_property_id
+
+  - model: authentik_providers_oauth2.scopemapping
+    id: peermesh-core-f2-identity-headers
+    identifiers:
+      name: PeerMesh Core F2 identity headers
+    attrs:
+      scope_name: peermesh-core-f2-identity-headers
+      description: Synthetic PeerMesh Core F2 headers for isolated staging proof only.
+      expression: |
+        attrs = getattr(request.user, "attributes", {}) or {}
+        role = "admin" if ak_is_group_member(request.user, name="peermesh-admins") else "user"
+        return {
+            "ak_proxy": {
+                "user_attributes": {
+                    "additionalHeaders": {
+                        "X-Peermesh-Auth-Subject": "synthetic-authentik-user-%s" % request.user.pk,
+                        "X-Peermesh-Actor-WebID": attrs.get("peermesh_actor_webid", "https://actors.example.invalid/peermesh-synthetic"),
+                        "X-Peermesh-Tenant-ID": attrs.get("peermesh_tenant_id", "tenant-synthetic-0001"),
+                        "X-Peermesh-Property-ID": attrs.get("peermesh_property_id", "property-synthetic-0001"),
+                        "X-Peermesh-Roles": role,
+                    },
+                },
+            },
+        }
+
+  - model: authentik_providers_proxy.proxyprovider
+    id: peermesh-core-f1-forwardauth
+    identifiers:
+      name: PeerMesh Core F1 ForwardAuth
+    attrs:
+      mode: forward_single
+      external_host: !Context peermesh_external_host
+      internal_host_ssl_validation: true
+      intercept_header_auth: false
+      basic_auth_enabled: false
+      skip_path_regex: ^/outpost.goauthentik.io/.*
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      property_mappings:
+        - !KeyOf peermesh-core-f2-identity-headers
+
+  - model: authentik_providers_proxy.proxyprovider
+    id: peermesh-core-f1-admin-forwardauth
+    identifiers:
+      name: PeerMesh Core F1 Admin ForwardAuth
+    attrs:
+      mode: forward_single
+      external_host: !Context peermesh_admin_external_host
+      internal_host_ssl_validation: true
+      intercept_header_auth: false
+      basic_auth_enabled: false
+      skip_path_regex: ^/outpost.goauthentik.io/.*
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      property_mappings:
+        - !KeyOf peermesh-core-f2-identity-headers
+
+  - model: authentik_core.application
+    id: peermesh-core-application
+    identifiers:
+      slug: peermesh-core
+    attrs:
+      name: PeerMesh Core
+      provider: !KeyOf peermesh-core-f1-forwardauth
+      policy_engine_mode: all
+      meta_hide: true
+      meta_description: Synthetic isolated staging proof application only.
+
+  - model: authentik_core.application
+    id: peermesh-core-admin-application
+    identifiers:
+      slug: peermesh-core-admin
+    attrs:
+      name: PeerMesh Core Admin
+      provider: !KeyOf peermesh-core-f1-admin-forwardauth
+      policy_engine_mode: all
+      meta_hide: true
+      meta_description: Synthetic isolated staging admin-route proof application only.
+
+  - model: authentik_outposts.outpost
+    id: peermesh-embedded-outpost
+    identifiers:
+      name: authentik Embedded Outpost
+    attrs:
+      type: proxy
+      providers:
+        - !KeyOf peermesh-core-f1-forwardauth
+        - !KeyOf peermesh-core-f1-admin-forwardauth
+
+  - model: authentik_policies_expression.expressionpolicy
+    id: peermesh-admin-provider-require-admin-role
+    identifiers:
+      name: PeerMesh admin provider requires admin role
+    attrs:
+      execution_logging: true
+      expression: |
+        if ak_is_group_member(request.user, name="peermesh-admins"):
+            return True
+        ak_message("PeerMesh synthetic admin provider requires peermesh-admins")
+        return False
+
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf peermesh-core-admin-application
+      order: 10
+    attrs:
+      policy: !KeyOf peermesh-admin-provider-require-admin-role
+      enabled: true
+      negate: false
+      timeout: 30
+      failure_result: false
