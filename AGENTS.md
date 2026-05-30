@@ -133,6 +133,7 @@ ALWAYS check `~/.agents/prompts/PROMPT-PATH-INDEX.md` FIRST before searching for
 - **Tier classifier:** `~/.agents/tools/usage-management/benchmarks/scripts/classify-tier.sh <WO.md>` — returns 1/2/3
 - **Never hardcode model choices** — always use select-model.sh or the policy defaults
 - **Inference Access:** `~/.agents/docs/INFERENCE-ACCESS-GUIDE.md` — how to call any model from any agent
+- **🚨 CLAUDE CODE TRUSTED MODEL OVERRIDE:** The trusted Opus model is `claude-opus-4-6[1m]`. When dispatching Opus-tier work in Claude Code, **NEVER pass `model: "opus"`** to the Agent tool — that resolves to the latest Opus (currently 4.8), which is NOT trusted. **Omit the model parameter entirely** so sub-agents inherit the parent session's trusted model. Only pass `model: "sonnet"` for explicit Sonnet-tier downgrades on simple/mechanical work. Use `max` effort for all Opus-tier dispatches.
 
 ---
 
@@ -466,6 +467,14 @@ For any multi-component system (Providers, LLMs, APIs), define explicit verifica
 - **Script:** `~/.agents/tools/usage-management/scripts/select-model.sh <tier>` — returns cheapest passing model + effort level
 - **Tier classifier:** `~/.agents/tools/usage-management/benchmarks/scripts/classify-tier.sh <WO.md>` — returns 1 (Simple), 2 (Standard), 3 (Complex)
 - Do not hardcode model choices — the policy updates as benchmarks complete and models improve.
+
+**🚨 CLAUDE CODE TRUSTED MODEL — MANDATORY FOR ALL DISPATCHES:**
+- The owner-trusted Opus model is `claude-opus-4-6[1m]`. Opus 4.8 is NOT trusted.
+- **Agent tool dispatches:** NEVER pass `model: "opus"` — it resolves to the latest Opus (4.8). Omit the model parameter entirely so the sub-agent inherits the parent session's model (`claude-opus-4-6[1m]`).
+- **Only override model downward:** Pass `model: "sonnet"` when the tier policy routes to Sonnet for simple/mechanical work. Never pass `model: "opus"` or `model: "haiku"`.
+- **Effort level:** Use `max` effort for all Opus-tier work. This does not apply to Sonnet-tier simple work.
+- **CLI dispatches (`claude -p`):** Use `--model claude-opus-4-6` explicitly. Do not rely on defaults.
+- **Rationale:** Every dispatched sub-agent that opens on 4.8 is running on the least-trusted model. This rule ensures the trusted model propagates through the entire dispatch chain.
 
 **Required:**
 - Always `run_in_background=true`
