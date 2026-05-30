@@ -77,7 +77,7 @@ This global configuration has been carefully crafted over months of refinement. 
 2. **It blocks you from doing useful work.** While you sit polling, you are accomplishing nothing.
 3. **It accomplishes literally nothing.** You are automatically notified when background tasks complete. The notification system exists precisely so you do not need to poll.
 
-**This includes Codex native multi-agent work: background-agent completions are surfaced programmatically to the parent thread. Do NOT model Codex as a poll-only runtime.**
+**This includes Codex native multi-agent work: native completion notices are first-class when they arrive, and any recovery must follow the bounded Codex Mac lifecycle contract. Do NOT model Codex as a poll-only runtime.**
 
 **THE CORRECT BEHAVIOR IS:**
 1. Launch background agents/tasks.
@@ -353,8 +353,8 @@ User Input -> Triage (capture) -> Dev (implement) -> QA (verify) -> Complete
 
 **Current baseline:**
 - **Codex runtime:** Multi-agent requires `~/.codex/config.toml` with `[features] multi_agent = true`. Native Agent Teams are not available yet; use GAS file-based team coordination (`subtask-comms/`, work orders, and shared state files) until native teams land.
-  - Native completion path: Codex background-agent completions are surfaced programmatically to the parent thread.
-  - Hook/bridge tracking is for observability and dashboards; it is **NOT** the mechanism that tells the parent Codex agent a worker finished.
+  - Native completion path: Codex background-agent completions are intended to surface programmatically, but Codex Mac idle-parent wake/assimilation is not treated as proven. Follow `/Users/grig/.agents/docs/protocols/codex-mac-native-worker-lifecycle.md`.
+  - Hook/bridge tracking is for observability and dashboards; it is **NOT** a proven parent-wake mechanism.
 - **Claude Code 4.6+:** Multi-agent is baseline behavior. Agent Teams require file setting `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` under `env` in Claude settings JSON.
 - **Tracking/dashboard integration:** Team and multi-agent events are routed through `~/.agents/hooks-integration/dispatcher.sh` and persisted for dashboards/monitoring. Keep hooks enabled in settings so agent-team events are captured.
 
