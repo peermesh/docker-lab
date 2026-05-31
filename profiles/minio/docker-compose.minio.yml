@@ -73,11 +73,13 @@ services:
       MINIO_ROOT_USER_FILE: /run/secrets/minio_root_user
       MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
 
-      # Console settings
-      MINIO_BROWSER: "on"  # Enable web console (disable in hardened production)
+      # Console disabled when publicly routed (CORE-SEC-005 / hardening package).
+      # For local dev access, use SSH tunnel to port 9001 or set MINIO_BROWSER=on
+      # in a local override file.
+      MINIO_BROWSER: "off"
 
-      # Prometheus metrics (optional - set to 'jwt' for authenticated metrics)
-      MINIO_PROMETHEUS_AUTH_TYPE: public
+      # CORE-SEC-005: require JWT auth for Prometheus metrics endpoint
+      MINIO_PROMETHEUS_AUTH_TYPE: jwt
 
       # Region (optional - for S3 compatibility)
       MINIO_REGION: us-east-1
