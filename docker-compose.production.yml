@@ -26,4 +26,5 @@ services:
       - "80:80"
       - "443:443"
       - "8448:8448"
-      - "127.0.0.1:${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
+      # Dashboard port removed (CORE-SEC-004): no plaintext loopback API.
+      # Access the dashboard at https://traefik.${DOMAIN} (BasicAuth-gated).

@@ -76,11 +76,15 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.letsencrypt.acme.caserver=${TRAEFIK_ACME_CASERVER:-https://127.0.0.1/acme-staging-disabled}"
 
-      # Dashboard and health check endpoints stay localhost-bound via ports below.
+      # Dashboard — served only through the auth-gated Docker-labels router.
+      # No insecure/plaintext API (CORE-SEC-004).
       - "--api.dashboard=true"
-      - "--api.insecure=true"
       - "--ping=true"
       - "--ping.entrypoint=traefik"
+
+      # Prometheus metrics on the internal traefik entrypoint
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.entryPoint=traefik"
 
       # Logging
       - "--log.level=${TRAEFIK_LOG_LEVEL:-INFO}"
@@ -90,7 +94,8 @@ services:
       - "127.0.0.1:${AUTHENTIK_STAGING_WEB_PORT:-19080}:80"
       - "127.0.0.1:${AUTHENTIK_STAGING_WEBSECURE_PORT:-19443}:443"
       - "127.0.0.1:${AUTHENTIK_STAGING_MATRIX_FED_PORT:-19448}:8448"
-      - "127.0.0.1:${AUTHENTIK_STAGING_TRAEFIK_DASHBOARD_PORT:-19083}:8080"
+      # Dashboard port removed (CORE-SEC-004): no plaintext loopback API.
+      # Dashboard access via https://traefik.${DOMAIN} (BasicAuth-gated).
     depends_on:
       authentik-server:
         condition: service_started

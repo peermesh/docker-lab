@@ -643,11 +643,12 @@ if [[ "$MODE" == "remote" ]]; then
         if [[ -n "$ports_output" ]]; then
             emit "$ports_output"
             # Flag unexpected ports
-            unexpected=$(printf '%s' "$ports_output" | grep -v ':22 \|:80 \|:443 \|:8080 \|127\.0\.0\.\|::1' || true)
+            # CORE-SEC-004: 8080 should no longer be publicly open (dashboard port removed).
+            unexpected=$(printf '%s' "$ports_output" | grep -v ':22 \|:80 \|:443 \|127\.0\.0\.\|::1' || true)
             if [[ -n "$unexpected" ]]; then
                 record_fail_medium "Unexpected open ports detected (review manually)"
             else
-                record_pass "Only expected ports open (22, 80, 443, 8080)"
+                record_pass "Only expected ports open (22, 80, 443)"
             fi
         else
             emit "  Could not retrieve open ports"

@@ -18,7 +18,9 @@ scrape_configs:
       - targets: ["host.docker.internal:9323"]
     metrics_path: /metrics
 
-  # Traefik metrics (if enabled in traefik config)
+  # Traefik metrics via the internal traefik entrypoint (port 8080).
+  # Requires --metrics.prometheus=true and --metrics.prometheus.entryPoint=traefik
+  # in the Traefik command. The API/dashboard is NOT served here (CORE-SEC-004).
   - job_name: "traefik"
     static_configs:
       - targets: ["pmdl_traefik:8080"]

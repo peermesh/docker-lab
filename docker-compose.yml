@@ -199,9 +199,14 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.letsencrypt.acme.caserver=${TRAEFIK_ACME_CASERVER:-}"
 
-      # Dashboard (localhost only by default)
+      # Dashboard — served only through the auth-gated Docker-labels router
+      # (traefik.${DOMAIN} with BasicAuth). No insecure/plaintext API.
       - "--api.dashboard=true"
-      - "--api.insecure=true"  # Required for local dashboard access
+
+      # Prometheus metrics on the internal traefik entrypoint (scraped by
+      # Prometheus at pmdl_traefik:8080/metrics; not exposed to the public).
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.entryPoint=traefik"
 
       # Health check endpoint
       - "--ping=true"
@@ -216,7 +221,10 @@ services:
       - "${TRAEFIK_WEB_PORT:-18000}:80"
       - "${TRAEFIK_WEBSECURE_PORT:-18001}:443"
       - "${TRAEFIK_MATRIX_FED_PORT:-18002}:8448"
-      - "127.0.0.1:${TRAEFIK_DASHBOARD_PORT:-18003}:8080"  # Dashboard on localhost only
+      # Dashboard port removed (CORE-SEC-004): no plaintext loopback API.
+      # Access the dashboard at https://traefik.${DOMAIN} (BasicAuth-gated).
+      # Prometheus metrics are still available on the internal traefik entrypoint
+      # (port 8080) for container-to-container scraping, but not published to host.
 
     volumes:
       - pmdl_traefik_acme:/acme
