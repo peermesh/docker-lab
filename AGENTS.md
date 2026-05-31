@@ -554,7 +554,7 @@ document-only teams spec lands.
 
 ### Integration
 
-- IDs: `WO-{PROJECT}-{SEQ}` (timestamp in filename prefix and `created` frontmatter, not in the ID)
+- IDs: `WO-{PROJECT}-{YYYYMMDD}-{SEQ}` (per `~/.agents/docs/standards/WO-FORMAT-STANDARD.md`)
 - Index: `.dev/ai/workorders/WO-INDEX.md`
 - Status: READY | IN_PROGRESS | BLOCKED | COMPLETED | OBSOLETE
 - Format: `~/.agents/docs/standards/WO-FORMAT-STANDARD.md` (tiered: Simple, Standard, Complex)
