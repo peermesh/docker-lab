@@ -177,9 +177,11 @@ services:
       - "--providers.docker.network=pmdl_proxy-external"
 
       # File provider for dynamic config (middlewares, catchall, future file-routed
-      # services). Repo-level custom TLS options are intentionally retired; Docker
-      # label routers rely on Traefik's built-in TLS defaults. See ADR-0005.
-      - "--providers.file.directory=/etc/traefik"
+      # services). Uses the tracked split-file directory so production Authentik
+      # and live-used middleware names survive VPS reconciliation. Repo-level
+      # custom TLS options are intentionally retired; Docker label routers rely on
+      # Traefik's built-in TLS defaults. See ADR-0005.
+      - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
 
       # Entrypoints

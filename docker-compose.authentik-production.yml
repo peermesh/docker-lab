@@ -1,0 +1,197 @@
+# ==============================================================
+# PeerMesh Core - Production Authentik Preservation Overlay
+# ==============================================================
+#
+# Scope:
+#   - Production VPS preservation only.
+#   - Preserves the live docker-lab Authentik service/container,
+#     secret-file, volume, network, and public router contract captured in
+#     the 2026-06-01 read-only VPS snapshot.
+#   - Do not use this file for isolated staging proofs; use
+#     docker-compose.authentik-staging.yml for staging-only work.
+#   - Do not commit real Authentik secret values. Production values stay in
+#     ./secrets/authentik_bootstrap.env and Docker secret files on the VPS.
+#
+# Future production mutation remains owner-gated by deploy-vps.sh.
+# ==============================================================
+
+services:
+  # Authentik dedicated PostgreSQL. Service and container names preserve the
+  # live VPS compose contract so reconcile/up does not orphan production auth.
+  authentik-postgres:
+    image: postgres:16-alpine
+    container_name: pmdl_authentik_postgres
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+      - /run/postgresql:size=16m
+    secrets:
+      - source: authentik_postgres_password
+        target: /run/secrets/authentik_postgres_password
+    environment:
+      POSTGRES_USER: authentik
+      POSTGRES_DB: authentik
+      POSTGRES_PASSWORD_FILE: /run/secrets/authentik_postgres_password
+    volumes:
+      - pmdl_authentik_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - authentik-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2026.5.0@sha256:feb81e02f7af70469c87c8a4fbfdb148647ae7a3ee5f79f8b08b7ee02b98c4c9
+    container_name: pmdl_authentik_server
+    restart: unless-stopped
+    command: server
+    secrets:
+      - source: authentik_postgres_password
+        target: /run/secrets/authentik_postgres_password
+      - source: authentik_secret_key
+        target: /run/secrets/authentik_secret_key
+      - source: authentik_bootstrap_token
+        target: /run/secrets/authentik_bootstrap_token
+    env_file:
+      - ./secrets/authentik_bootstrap.env
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@peers.social
+      AUTHENTIK_HOST: "http://localhost:9000"
+      AUTHENTIK_HOST_BROWSER: "https://auth.peers.social"
+      AUTHENTIK_INSECURE: "true"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_DISABLE_UPDATE_CHECK: "true"
+    volumes:
+      - pmdl_authentik_media:/media
+      - pmdl_authentik_templates:/templates
+      - pmdl_authentik_certs:/certs
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "ak", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - authentik-internal
+      - proxy-external
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authentik.rule=Host(`auth.peers.social`)"
+      - "traefik.http.routers.authentik.entrypoints=websecure"
+      - "traefik.http.routers.authentik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik.service=authentik"
+      - "traefik.http.services.authentik.loadbalancer.server.port=9000"
+      - "traefik.http.routers.authentik-root-outpost.rule=Host(`peers.social`) && PathPrefix(`/outpost.goauthentik.io`)"
+      - "traefik.http.routers.authentik-root-outpost.entrypoints=websecure"
+      - "traefik.http.routers.authentik-root-outpost.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik-root-outpost.priority=1000"
+      - "traefik.http.routers.authentik-root-outpost.service=authentik"
+      - "traefik.http.routers.authentik-admin-outpost.rule=Host(`admin-auth.peers.social`) && PathPrefix(`/outpost.goauthentik.io`)"
+      - "traefik.http.routers.authentik-admin-outpost.entrypoints=websecure"
+      - "traefik.http.routers.authentik-admin-outpost.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.authentik-admin-outpost.priority=1000"
+      - "traefik.http.routers.authentik-admin-outpost.service=authentik"
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2026.5.0@sha256:feb81e02f7af70469c87c8a4fbfdb148647ae7a3ee5f79f8b08b7ee02b98c4c9
+    container_name: pmdl_authentik_worker
+    restart: unless-stopped
+    command: worker
+    secrets:
+      - source: authentik_postgres_password
+        target: /run/secrets/authentik_postgres_password
+      - source: authentik_secret_key
+        target: /run/secrets/authentik_secret_key
+      - source: authentik_bootstrap_token
+        target: /run/secrets/authentik_bootstrap_token
+    env_file:
+      - ./secrets/authentik_bootstrap.env
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@peers.social
+      AUTHENTIK_HOST: "http://localhost:9000"
+      AUTHENTIK_HOST_BROWSER: "https://auth.peers.social"
+      AUTHENTIK_INSECURE: "true"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_DISABLE_UPDATE_CHECK: "true"
+    volumes:
+      - pmdl_authentik_media:/media
+      - pmdl_authentik_templates:/templates
+      - pmdl_authentik_certs:/certs
+    depends_on:
+      authentik-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "ak", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - authentik-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  authentik_postgres_password:
+    file: ./secrets/authentik_postgres_password
+  authentik_secret_key:
+    file: ./secrets/authentik_secret_key
+  authentik_bootstrap_token:
+    file: ./secrets/authentik_bootstrap_token
+
+volumes:
+  pmdl_authentik_postgres_data:
+    driver: local
+  pmdl_authentik_media:
+    driver: local
+  pmdl_authentik_templates:
+    driver: local
+  pmdl_authentik_certs:
+    driver: local
+
+networks:
+  authentik-internal:
+    internal: true
+    name: pmdl_authentik-internal

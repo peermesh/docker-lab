@@ -1,0 +1,140 @@
+# ==============================================================
+# Traefik Dynamic Configuration - Production Security Middleware
+# ==============================================================
+# Loaded by the production Traefik file provider from /etc/traefik/dynamic.
+# This file intentionally carries HTTP middleware/router state only; repo-level
+# TLS options remain retired per ADR-0005.
+# ==============================================================
+
+http:
+  middlewares:
+    security-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        contentSecurityPolicy: >-
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com;
+          style-src 'self' 'unsafe-inline' https://rsms.me;
+          img-src 'self' data: https:;
+          font-src 'self' https://rsms.me;
+          connect-src 'self' https://um.peers.social https://challenges.cloudflare.com wss://peers.social;
+          media-src 'self';
+          object-src 'none';
+          base-uri 'self';
+          form-action 'self';
+          frame-ancestors 'none';
+          frame-src 'self' https://challenges.cloudflare.com;
+          worker-src 'self' blob:;
+          block-all-mixed-content
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+          X-Robots-Tag: "noindex, nofollow"
+          X-Permitted-Cross-Domain-Policies: "none"
+          X-DNS-Prefetch-Control: "off"
+          X-Download-Options: "noopen"
+        customRequestHeaders:
+          X-Powered-By: ""
+          Server: ""
+
+    api-security-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        contentSecurityPolicy: "default-src 'none'; frame-ancestors 'none'"
+        permissionsPolicy: >-
+          camera=(),
+          microphone=(),
+          geolocation=(),
+          interest-cohort=(),
+          payment=(),
+          usb=()
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+          X-Forwarded-Server: ""
+
+    federation-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+
+    ratelimit-auth:
+      rateLimit:
+        average: 10
+        burst: 20
+        period: 1m
+
+    ratelimit-api:
+      rateLimit:
+        average: 60
+        burst: 100
+        period: 1m
+
+    ratelimit-federation:
+      rateLimit:
+        average: 120
+        burst: 200
+        period: 1m
+
+    ratelimit-public:
+      rateLimit:
+        average: 200
+        burst: 400
+        period: 1m
+
+    body-limit-default:
+      buffering:
+        maxRequestBodyBytes: 1048576
+        memRequestBodyBytes: 1048576
+
+    body-limit-federation:
+      buffering:
+        maxRequestBodyBytes: 262144
+        memRequestBodyBytes: 262144
+
+    body-limit-auth:
+      buffering:
+        maxRequestBodyBytes: 16384
+        memRequestBodyBytes: 16384
+
+    deny-all:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"
+
+  routers:
+    catchall-http:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - web
+      priority: 1
+      middlewares:
+        - deny-all
+      service: noop@file
+
+  services:
+    noop:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:0"

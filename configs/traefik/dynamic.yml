@@ -1,8 +1,11 @@
 # ==============================================================
 # Traefik Dynamic Configuration
 # ==============================================================
-# Loaded via providers.file in static config (docker-compose.yml).
-# This file defines middlewares applied to all routers.
+# Legacy single-file dynamic config. The active production file-provider target
+# now loads configs/traefik/dynamic/*.yml via /etc/traefik/dynamic so live
+# Authentik and middleware files can be preserved without overwriting the live
+# split-file layout. Keep this file only for older local workflows that still
+# point Traefik at /etc/traefik.
 # ==============================================================
 
 http:
