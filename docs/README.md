@@ -138,7 +138,10 @@ Use this checklist before coding:
 ## Files agents should check frequently
 
 - `sub-repos/core/docs/DEPLOYMENT-REPO-PATTERN.md`
+- `sub-repos/core/docs/DEPLOYMENT.md`
 - `sub-repos/core/docs/module-authoring-guide.md`
+- `sub-repos/core/docs/SECURITY.md`
+- `sub-repos/core/docs/decisions/INDEX.md`
 - `sub-repos/core/foundation/docs/LIFECYCLE-HOOKS.md`
 - `sub-repos/core/foundation/docs/EVENT-BUS-INTERFACE.md`
 - `sub-repos/core/foundation/events/payments-events.json`
