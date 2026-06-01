@@ -85,8 +85,11 @@ for volume in pmdl_authentik_postgres_data pmdl_authentik_media pmdl_authentik_t
 done
 require_grep 'name:[[:space:]]*pmdl_authentik-internal' "$overlay" "live Authentik internal network name"
 
+# shellcheck disable=SC2016
 require_grep 'traefik\.http\.routers\.authentik\.rule=Host\(`auth\.peers\.social`\)' "$overlay" "auth.peers.social router"
+# shellcheck disable=SC2016
 require_grep 'traefik\.http\.routers\.authentik-root-outpost\.rule=Host\(`peers\.social`\) && PathPrefix\(`/outpost\.goauthentik\.io`\)' "$overlay" "root outpost router"
+# shellcheck disable=SC2016
 require_grep 'traefik\.http\.routers\.authentik-admin-outpost\.rule=Host\(`admin-auth\.peers\.social`\) && PathPrefix\(`/outpost\.goauthentik\.io`\)' "$overlay" "admin outpost router"
 require_absent 'AUTHENTIK_(POSTGRESQL__PASSWORD|SECRET_KEY|BOOTSTRAP_TOKEN):' "$overlay" "inlined Authentik secret environment value"
 
@@ -180,8 +183,11 @@ for secret in authentik_postgres_password authentik_secret_key authentik_bootstr
     require_grep "secrets/${secret}" "$rendered" "rendered secret file ${secret}"
 done
 require_grep 'name:[[:space:]]*pmdl_authentik-internal' "$rendered" "rendered Authentik internal network"
+# shellcheck disable=SC2016
 require_grep 'traefik\.http\.routers\.authentik\.rule: Host\(`auth\.peers\.social`\)' "$rendered" "rendered auth router"
+# shellcheck disable=SC2016
 require_grep 'traefik\.http\.routers\.authentik-root-outpost\.rule: Host\(`peers\.social`\) && PathPrefix\(`/outpost\.goauthentik\.io`\)' "$rendered" "rendered root outpost router"
+# shellcheck disable=SC2016
 require_grep 'traefik\.http\.routers\.authentik-admin-outpost\.rule: Host\(`admin-auth\.peers\.social`\) && PathPrefix\(`/outpost\.goauthentik\.io`\)' "$rendered" "rendered admin outpost router"
 require_grep '--providers\.file\.directory=/etc/traefik/dynamic' "$rendered" "rendered Traefik split dynamic directory"
 
