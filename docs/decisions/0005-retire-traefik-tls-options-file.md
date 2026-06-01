@@ -18,8 +18,8 @@ provider boundary: routers declared through Docker labels cannot safely depend o
 TLS option name declared in the file provider.
 
 The repo previously carried a `configs/traefik/tls.yml` file for custom TLS options.
-That file is no longer present, and the remaining file-provider configuration in
-`configs/traefik/dynamic.yml` is limited to middlewares and the catchall router.
+That file is no longer present, and the remaining file-provider configuration under
+`configs/traefik/dynamic/` is limited to middlewares and the catchall router.
 
 Keeping the project ambiguous about repo-level TLS option customization would invite
 future regressions where operators add `tls.options=...@file` back to Docker labels.
@@ -56,7 +56,11 @@ If a future deployment genuinely needs custom TLS behavior, it must do one of:
 ## Implementation Notes
 
 - `sub-repos/core/configs/traefik/tls.yml` is intentionally absent.
-- `sub-repos/core/configs/traefik/dynamic.yml` remains the only shipped Traefik
-  dynamic file.
+- `sub-repos/core/configs/traefik/dynamic/security.yml` and
+  `sub-repos/core/configs/traefik/dynamic/authentik.yml` are the active shipped
+  Traefik dynamic files for production preservation.
+- `sub-repos/core/configs/traefik/dynamic.yml` is retained only as a legacy
+  single-file compatibility artifact and is not the active `deploy-vps.sh`
+  file-provider target.
 - `docs/DNS-TLS-DEPLOYMENT-GUIDE.md` documents this retired-default posture and the
   supported override patterns.

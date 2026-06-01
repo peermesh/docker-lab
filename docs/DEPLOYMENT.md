@@ -862,6 +862,21 @@ cd /opt/peermesh
 git status  # .env should not appear
 ```
 
+### VPS Production Compose Target
+
+The authoritative VPS root-project target is the clean Core repo content under `sub-repos/core/`, applied on the VPS at `/opt/docker-lab` through `sub-repos/core/scripts/deploy-vps.sh`. Parent-level `docker-compose.yml` and parent-level `configs/traefik/dynamic.yml` are workspace artifacts and are not the active `deploy-vps.sh` source.
+
+`deploy-vps.sh` now layers `docker-compose.authentik-production.yml` with the base, production port, and observability overlays so future config renders preserve the live production Authentik services. Real Authentik values must remain only in untracked VPS files:
+
+```text
+/opt/docker-lab/secrets/authentik_postgres_password
+/opt/docker-lab/secrets/authentik_secret_key
+/opt/docker-lab/secrets/authentik_bootstrap_token
+/opt/docker-lab/secrets/authentik_bootstrap.env
+```
+
+Future `deploy-vps.sh reconcile` or `deploy-vps.sh up` is blocked unless the owner has approved `PLAN-CORE-RECONCILE-001-REV-AUTHENTIK-PRESERVE` and the caller sets `PEERMESH_PRODUCTION_AUTHENTIK_APPLY_APPROVAL` to that exact plan ID. This gate does not authorize mutation by itself; it records that the external owner approval has already happened.
+
 ---
 
 ## Next Steps

@@ -242,7 +242,7 @@ TRAEFIK_ACME_STAGING=true
 
 ## Security Response Headers
 
-All HTTPS traffic receives security headers automatically via Traefik middleware defined in `configs/traefik/dynamic.yml`.
+All HTTPS traffic receives security headers automatically via Traefik middleware defined in `configs/traefik/dynamic/security.yml`. Production Authentik forward-auth chains are tracked separately in `configs/traefik/dynamic/authentik.yml`.
 
 ### Default Headers (applied to all websecure traffic)
 
