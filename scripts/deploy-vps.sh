@@ -27,10 +27,10 @@
 #   ./deploy-vps.sh prereqs          # print VPS package prerequisites
 #   ./deploy-vps.sh config            # validate merged config
 #   ./deploy-vps.sh dry-run           # preview what would happen
-#   ./deploy-vps.sh reconcile         # remove orphans only (safe, --no-recreate)
-#   ./deploy-vps.sh reconcile --yes   # same, skip confirmation
-#   ./deploy-vps.sh up                # apply + recreate on config drift
-#   ./deploy-vps.sh up --yes          # same, skip confirmation
+#   ./deploy-vps.sh reconcile         # owner-gated, remove orphans only (--no-recreate)
+#   ./deploy-vps.sh reconcile --yes   # same, skip confirmation after gate
+#   ./deploy-vps.sh up                # owner-gated, apply + recreate on config drift
+#   ./deploy-vps.sh up --yes          # same, skip confirmation after gate
 #   ./deploy-vps.sh ps                # list services in this project
 #
 # RECONCILE VS UP
@@ -51,6 +51,8 @@
 #     of the root project and are never touched by this script.
 #   - If new profiles are activated on the VPS, add them to the
 #     ACTIVE_COMPOSE_FILES and ACTIVE_PROFILES arrays below.
+#   - Production mutation commands are blocked unless the caller sets
+#     PEERMESH_PRODUCTION_AUTHENTIK_APPLY_APPROVAL to the revised plan ID.
 # ==============================================================
 
 set -euo pipefail
@@ -68,6 +70,7 @@ readonly DOCKER_LAB_DIR="${DOCKER_LAB_DIR:-/opt/docker-lab}"
 readonly ACTIVE_COMPOSE_FILES=(
     "docker-compose.yml"
     "docker-compose.production.yml"
+    "docker-compose.authentik-production.yml"
     "profiles/observability-lite/docker-compose.observability-lite.yml"
     "profiles/observability-full/docker-compose.observability-full.yml"
 )
@@ -79,12 +82,25 @@ readonly ACTIVE_PROFILES=(
     "postgresql"
 )
 
+# Explicit owner approval gate for future production mutation under the revised
+# Authentik-preservation plan. Config and dry-run remain non-mutating; reconcile
+# and up are blocked until the owner supplies the plan ID out-of-band.
+readonly PRODUCTION_AUTHENTIK_PLAN_ID="PLAN-CORE-RECONCILE-001-REV-AUTHENTIK-PRESERVE"
+readonly PRODUCTION_AUTHENTIK_APPROVAL_VAR="PEERMESH_PRODUCTION_AUTHENTIK_APPLY_APPROVAL"
+
 # --------------------------------------------------------------
 # Internals
 # --------------------------------------------------------------
 
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 log() { printf '[deploy-vps] %s\n' "$*"; }
+
+require_production_mutation_approval() {
+    local approval="${PEERMESH_PRODUCTION_AUTHENTIK_APPLY_APPROVAL:-}"
+    if [[ "$approval" != "$PRODUCTION_AUTHENTIK_PLAN_ID" ]]; then
+        die "production mutation blocked: set ${PRODUCTION_AUTHENTIK_APPROVAL_VAR}=${PRODUCTION_AUTHENTIK_PLAN_ID} only after fresh owner approval"
+    fi
+}
 
 build_compose_args() {
     local args=()
@@ -163,6 +179,7 @@ _confirm() {
 
 cmd_reconcile() {
     local assume_yes="${1:-}"
+    require_production_mutation_approval
     run_guard_check
     log "validating merged compose configuration..."
     compose config --quiet
@@ -178,6 +195,7 @@ cmd_reconcile() {
 
 cmd_up() {
     local assume_yes="${1:-}"
+    require_production_mutation_approval
     run_guard_check
     log "validating merged compose configuration..."
     compose config --quiet
