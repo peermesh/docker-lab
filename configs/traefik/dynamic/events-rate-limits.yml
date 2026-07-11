@@ -1,0 +1,75 @@
+# ==============================================================
+# PeerMesh Events - Gateway Rate-Limit Middleware Candidates
+# ==============================================================
+# These middlewares are intentionally inert until an Events router attaches
+# them. Protected routers must run peermesh-auth@file first so Authentik has
+# replaced any client-supplied X-Peermesh-* headers before the actor bucket is
+# evaluated. Example attachment order:
+#   peermesh-auth@file,events-ratelimit-30-per-hour@file
+#
+# The IP bucket uses Traefik's default remote-address criterion. Production
+# promotion must prove that this address is the real client (or configure a
+# trusted-proxy ipStrategy) before claiming per-client-IP enforcement.
+# ==============================================================
+
+http:
+  middlewares:
+    events-ratelimit-30-per-hour-ip:
+      rateLimit:
+        average: 30
+        burst: 1
+        period: 1h
+
+    events-ratelimit-30-per-hour-actor:
+      rateLimit:
+        average: 30
+        burst: 1
+        period: 1h
+        sourceCriterion:
+          requestHeaderName: X-Peermesh-Actor-WebID
+
+    events-ratelimit-30-per-hour:
+      chain:
+        middlewares:
+          - events-ratelimit-30-per-hour-ip
+          - events-ratelimit-30-per-hour-actor
+
+    events-ratelimit-60-per-hour-ip:
+      rateLimit:
+        average: 60
+        burst: 1
+        period: 1h
+
+    events-ratelimit-60-per-hour-actor:
+      rateLimit:
+        average: 60
+        burst: 1
+        period: 1h
+        sourceCriterion:
+          requestHeaderName: X-Peermesh-Actor-WebID
+
+    events-ratelimit-60-per-hour:
+      chain:
+        middlewares:
+          - events-ratelimit-60-per-hour-ip
+          - events-ratelimit-60-per-hour-actor
+
+    events-ratelimit-120-per-hour-ip:
+      rateLimit:
+        average: 120
+        burst: 1
+        period: 1h
+
+    events-ratelimit-120-per-hour-actor:
+      rateLimit:
+        average: 120
+        burst: 1
+        period: 1h
+        sourceCriterion:
+          requestHeaderName: X-Peermesh-Actor-WebID
+
+    events-ratelimit-120-per-hour:
+      chain:
+        middlewares:
+          - events-ratelimit-120-per-hour-ip
+          - events-ratelimit-120-per-hour-actor

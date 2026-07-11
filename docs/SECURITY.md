@@ -272,6 +272,20 @@ labels:
 
 Services that need a custom CSP (e.g., embedding iframes, loading external scripts) can define their own headers middleware via Docker labels. The per-router middleware list replaces the entrypoint default, so the service takes full control of its headers.
 
+## Events Gateway Rate-Limit Candidate
+
+Core tracks inert per-IP and trusted-actor middleware candidates for the Events
+route classes in `configs/traefik/dynamic/events-rate-limits.yml`. The contract,
+attachment order, route mapping, and production proof gates are documented in
+`docs/contracts/EVENTS-GATEWAY-RATE-LIMIT-CONTRACT-v0.1.md`.
+
+These definitions do not make Events production-ready by themselves. The
+standalone `docker-compose.events-sandbox.yml` attaches them after
+`peermesh-auth@file` for executable local proof only. Production still must
+attach an Events runtime and prove real-client IP attribution, trusted
+Authentik actor headers, route coverage, 429 behavior, cleanup-route isolation,
+and counter behavior for the deployed edge topology.
+
 ## Dashboard API Authentication
 
 ### Authentication-First Design

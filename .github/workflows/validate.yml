@@ -83,6 +83,17 @@ jobs:
           export TRAEFIK_DASHBOARD_AUTH="admin:$(printf '%s' pmdl-ci-smoke | openssl passwd -apr1 -stdin)"
           docker compose -f docker-compose.yml --profile lite down -v --remove-orphans || true
 
+  vps-production-contract:
+    name: VPS production middleware contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate production Authentik and Events middleware contracts
+        run: |
+          chmod +x scripts/validation/validate-vps-production-authentik-overlay.sh
+          ./scripts/validation/validate-vps-production-authentik-overlay.sh
+
   json-yaml-validate:
     name: JSON/YAML Schema
     runs-on: ubuntu-latest

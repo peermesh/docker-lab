@@ -52,6 +52,7 @@ require_file "${CORE_ROOT}/docker-compose.authentik-production.yml"
 require_file "${CORE_ROOT}/authentik-production.env.example"
 require_file "${CORE_ROOT}/configs/traefik/dynamic/authentik.yml"
 require_file "${CORE_ROOT}/configs/traefik/dynamic/security.yml"
+require_file "${CORE_ROOT}/configs/traefik/dynamic/events-rate-limits.yml"
 require_file "${CORE_ROOT}/scripts/deploy-vps.sh"
 require_file "${CORE_ROOT}/profiles/observability-lite/docker-compose.observability-lite.yml"
 require_file "${CORE_ROOT}/profiles/observability-full/docker-compose.observability-full.yml"
@@ -103,6 +104,18 @@ done
 for middleware in security-headers ratelimit-api peermesh-auth peermesh-admin-auth; do
     require_middleware_once "$middleware"
 done
+
+events_rate_limit_file="${CORE_ROOT}/configs/traefik/dynamic/events-rate-limits.yml"
+for limit in 30 60 120; do
+    for suffix in ip actor; do
+        require_middleware_once "events-ratelimit-${limit}-per-hour-${suffix}"
+    done
+    require_middleware_once "events-ratelimit-${limit}-per-hour"
+    require_grep "average:[[:space:]]*${limit}$" "$events_rate_limit_file" "Events ${limit}/hour average"
+done
+require_grep 'requestHeaderName:[[:space:]]*X-Peermesh-Actor-WebID' "$events_rate_limit_file" "Events actor rate-limit source criterion"
+[[ "$(grep -Ec 'period:[[:space:]]*1h$' "$events_rate_limit_file")" == "6" ]] || fail "all six Events IP/actor buckets must use period 1h"
+[[ "$(grep -Ec 'burst:[[:space:]]*1$' "$events_rate_limit_file")" == "6" ]] || fail "all six Events IP/actor buckets must use conservative burst 1"
 require_grep 'peermesh-forward-auth:' "${CORE_ROOT}/configs/traefik/dynamic/authentik.yml" "ordinary forward-auth middleware"
 require_grep 'peermesh-admin-forward-auth:' "${CORE_ROOT}/configs/traefik/dynamic/authentik.yml" "admin forward-auth middleware"
 require_grep 'address:[[:space:]]*"http://authentik-server:9000/outpost\.goauthentik\.io/auth/traefik"' "${CORE_ROOT}/configs/traefik/dynamic/authentik.yml" "Authentik forward-auth address"
@@ -193,4 +206,5 @@ require_grep '--providers\.file\.directory=/etc/traefik/dynamic' "$rendered" "re
 
 pass "production Authentik overlay renders with live service/container/volume/secret/router contract"
 pass "required live file middlewares are defined exactly once: security-headers, ratelimit-api, peermesh-auth, peermesh-admin-auth"
+pass "inert Events gateway candidates define paired IP/actor limits at 30, 60, and 120 requests per hour"
 pass "production mutation remains gated by ${PLAN_ID}"

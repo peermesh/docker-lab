@@ -151,6 +151,7 @@ Use this checklist before coding:
 - `sub-repos/core/docs/DEPLOYMENT-PROMOTION-RUNBOOK.md`
 - `sub-repos/core/docs/MULTI-ENVIRONMENT.md`
 - `sub-repos/core/docs/WEBHOOK-DEPLOYMENT.md`
+- [Events gateway rate-limit contract](contracts/EVENTS-GATEWAY-RATE-LIMIT-CONTRACT-v0.1.md)
 
 ## Event bus noop visibility (operators)
 
