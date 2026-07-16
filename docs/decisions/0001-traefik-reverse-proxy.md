@@ -28,9 +28,11 @@ The reverse proxy is a core infrastructure component that all other services dep
 
 ## Decision
 
-**We will use Traefik v3 as the reverse proxy** with Coreel-based service discovery, automatic TLS via Let's Encrypt (HTTP-01 challenge, DNS-01 for wildcards), and docker-socket-proxy for secure Docker API access.
+**We will use Traefik as the reverse proxy** with Coreel-based service discovery, automatic TLS via Let's Encrypt (HTTP-01 challenge, DNS-01 for wildcards), and docker-socket-proxy for secure Docker API access.
 
 Traefik was selected because it provides native Docker integration without plugins, automatic service discovery through container labels, and built-in ACME certificate management. This eliminates the need for central configuration files and allows each service to declare its own routing rules.
+
+> **Version fact of record (2026-07-14, owner decision D1 / declaration).** The edge proxy **running in production is Traefik v2.11 (EOL)**, not v3. An earlier draft of this ADR stated "Traefik v3" in the decision line while the implementation note below pinned v2.11; that self-contradiction is resolved here in favor of the production fact. The **v2.11 → v3 LTS migration** is tracked separately as **WO-PMSYS-2026-07-14-163 / decision D6** (authorized to staging-proof; production apply owner-gated) and has **not** been applied. See the routing declaration: `/Users/grig/work/peermesh/repo/peermesh-system/.dev/ai/artifacts/portfolio/PEERMESH-IDENTITY-PLANES-DECLARATION.md`.
 
 ---
 
@@ -83,7 +85,7 @@ Traefik was selected because it provides native Docker integration without plugi
 ### Negative
 
 - Slightly higher memory usage than nginx (50-100MB vs 10-30MB)
-- Traefik v3 is newer than v2 (released April 2024)
+- Production currently pins **Traefik v2.11 (EOL)**; the v3 LTS migration (WO-PMSYS-2026-07-14-163 / D6) remains outstanding, so the platform runs an end-of-life edge proxy until that migration is applied
 - Label syntax can become verbose for complex routing rules
 
 ### Neutral
@@ -99,22 +101,22 @@ Traefik was selected because it provides native Docker integration without plugi
 - Docker socket access through socket-proxy container (see ADR-0004)
 - ACME certificates stored in named volume with 600 permissions
 
-### Version Compatibility Warning
+### Version Pin: Traefik v2.11 (current production state)
 
-**Traefik v3.2 is incompatible with Docker 29.x** due to Docker API version mismatch. Traefik v3.2's Docker client uses API v1.24, but Docker 29.x requires API v1.44 or higher.
+**Production runs Traefik v2.11 (EOL).** This is the current fact of record, not a temporary state — the v3 LTS migration is tracked separately (WO-PMSYS-2026-07-14-163 / decision D6, authorized to staging-proof; production apply owner-gated) and has not been applied.
 
-**Symptoms**: Traefik container fails to start or cannot communicate with Docker socket proxy.
+The pin originated from a compatibility issue: **Traefik v3.2 is incompatible with Docker 29.x** due to a Docker API version mismatch (Traefik v3.2's Docker client uses API v1.24, but Docker 29.x requires API v1.44 or higher).
 
-**Workaround**: Use Traefik v2.11 until this is resolved upstream.
+**Symptoms if v3.2 is used against Docker 29.x**: Traefik container fails to start or cannot communicate with Docker socket proxy.
 
 ```yaml
-# Use v2.11 instead of v3.2
+# Production pins v2.11 (EOL); v3 migration tracked under WO-163 / D6
 services:
   traefik:
     image: traefik:v2.11
 ```
 
-This issue affects Docker Engine 29.x releases (May 2025+). Monitor the [Traefik GitHub issues](https://github.com/traefik/traefik/issues) for resolution status.
+This issue affects Docker Engine 29.x releases (May 2025+). The v3 migration work order tracks upstream resolution and the staging-proof/production-apply sequence. Monitor the [Traefik GitHub issues](https://github.com/traefik/traefik/issues) for resolution status.
 
 ---
 
@@ -141,3 +143,4 @@ This issue affects Docker Engine 29.x releases (May 2025+). Monitor the [Traefik
 |------|--------|--------|
 | 2026-01-02 | Initial draft | AI-assisted |
 | 2026-01-02 | Status changed to accepted | AI-assisted |
+| 2026-07-15 | Resolved v3-vs-v2.11 self-contradiction in favor of the production fact (v2.11 EOL today; v3 migration tracked as WO-PMSYS-2026-07-14-163 / D6). Docs-only correction per owner decision D1 declaration. | docs lane |
